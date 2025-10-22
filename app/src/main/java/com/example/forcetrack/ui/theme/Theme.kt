@@ -1,53 +1,79 @@
 package com.example.forcetrack.ui.theme
 
 import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+private val ForceTrackColorScheme = darkColorScheme(
+    // Colores principales
+    primary = ButtonGreen,
     onPrimary = Color.White,
+    primaryContainer = ButtonGreen.copy(alpha = 0.3f),
+    onPrimaryContainer = ButtonGreen,
+
+    // Colores secundarios
+    secondary = InputTextBlue,
     onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    secondaryContainer = InputTextBlue.copy(alpha = 0.3f),
+    onSecondaryContainer = InputTextBlue,
+
+    // Colores de fondo
+    background = BackgroundDark,
+    onBackground = TextLight,
+
+    // Superficies (Cards, etc)
+    surface = InputBackground,
+    onSurface = TextLight,
+    surfaceVariant = SurfaceDark,
+    onSurfaceVariant = TextLight,
+
+    // Otros colores
+    error = ErrorRed,
+    onError = Color.White,
+    errorContainer = ErrorRed.copy(alpha = 0.3f),
+    onErrorContainer = ErrorRed,
+
+    // Contornos
+    outline = TextLight.copy(alpha = 0.3f),
+    outlineVariant = TextLight.copy(alpha = 0.15f),
+
+    // Contenedores de superficies
+    surfaceContainer = InputBackground,
+    surfaceContainerHigh = SurfaceDark,
+    surfaceContainerHighest = SurfaceDark,
+    surfaceContainerLow = BackgroundDark,
+    surfaceContainerLowest = BackgroundDark,
+
+    // Superficie inversa
+    inverseSurface = TextLight,
+    inverseOnSurface = BackgroundDark,
+    inversePrimary = ButtonGreen
 )
 
 @Composable
 fun ForcetrackTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    darkTheme: Boolean = true, // Siempre usar tema oscuro
+    dynamicColor: Boolean = false, // Desactivar colores dinámicos para usar nuestra paleta
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val colorScheme = ForceTrackColorScheme
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            @Suppress("DEPRECATION")
+            window.statusBarColor = BackgroundDark.toArgb()
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = BackgroundDark.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+        }
     }
 
     MaterialTheme(

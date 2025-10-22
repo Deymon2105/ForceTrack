@@ -1,10 +1,9 @@
 package com.example.forcetrack.model
 
-open class Usuario(
-    val username: String,
-    val email: String,
-    var password: String
+// Modelo simple de Usuario para usar en la UI
+data class Usuario(
+    val id: Int = 0,
+    val nombreUsuario: String,
+    val correo: String,
+    val contrasena: String
 )
-
-class UsuarioPremium(username: String, email: String, password: String, val perks: List<String>)
-    : Usuario(username, email, password)

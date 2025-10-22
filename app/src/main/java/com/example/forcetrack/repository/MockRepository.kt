@@ -24,6 +24,7 @@ object MockRepository {
     )
 
     var usuarios = mutableListOf<Usuario>()
+    // Iniciar sin bloques predefinidos
     var bloques = mutableListOf<BloqueEntrenamiento>()
 
     fun registrarUsuario(usuario: Usuario) {
@@ -31,12 +32,17 @@ object MockRepository {
     }
 
     fun autenticar(email: String, password: String): Boolean {
-        return usuarios.any { it.email == email && it.password == password }
+        return usuarios.any { it.correo == email && it.contrasena == password }
     }
 
     fun agregarBloque(bloque: BloqueEntrenamiento) {
         bloques.add(bloque)
     }
 
+    fun eliminarBloque(bloqueId: Int) {
+        bloques.removeAll { it.id == bloqueId }
+    }
+
     fun obtenerBloques(): List<BloqueEntrenamiento> = bloques
 }
+
