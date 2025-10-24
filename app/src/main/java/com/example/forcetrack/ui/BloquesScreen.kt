@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -24,7 +25,8 @@ import com.example.forcetrack.viewmodel.BloquesViewModel
 fun BloquesScreen(
     bloquesViewModel: BloquesViewModel,
     onBloqueSelected: (Int) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onOpenCalendar: () -> Unit // añadido
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var bloqueToDelete by remember { mutableStateOf<BloqueEntity?>(null) }
@@ -57,6 +59,9 @@ fun BloquesScreen(
             TopAppBar(
                 title = { Text("Mis Bloques", fontWeight = FontWeight.Bold) },
                 actions = {
+                    IconButton(onClick = onOpenCalendar) {
+                        Icon(Icons.Default.CalendarToday, "Calendario")
+                    }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.AutoMirrored.Filled.Logout, "Cerrar sesión")
                     }

@@ -10,7 +10,9 @@ class ForceTrackRepository(
     private val semanaDao: SemanaDao,
     private val diaDao: DiaDao,
     private val ejercicioDao: EjercicioDao,
-    private val serieDao: SerieDao
+    private val serieDao: SerieDao,
+    private val trainingLogDao: TrainingLogDao,
+    private val ejercicioDisponibleDao: EjercicioDisponibleDao
 ) {
 
     // --- Operaciones de Usuario ---
@@ -119,5 +121,43 @@ class ForceTrackRepository(
             val serieActualizada = it.copy(peso = peso, repeticiones = repeticiones, rir = rir, completada = completada)
             serieDao.actualizarSerie(serieActualizada)
         }
+    }
+
+    // --- Operaciones con Training Logs ---
+    fun obtenerLogsUsuario(usuarioId: Int): Flow<List<TrainingLogEntity>> {
+        return trainingLogDao.obtenerLogsPorUsuario(usuarioId)
+    }
+
+    suspend fun obtenerLogPorFecha(usuarioId: Int, dateIso: String): TrainingLogEntity? {
+        return trainingLogDao.obtenerLogPorFecha(usuarioId, dateIso)
+    }
+
+    suspend fun crearOActualizarLog(log: TrainingLogEntity): Long {
+        return trainingLogDao.insertarLog(log)
+    }
+
+    suspend fun actualizarLog(log: TrainingLogEntity) {
+        trainingLogDao.actualizarLog(log)
+    }
+
+    suspend fun eliminarLogPorId(id: Int) {
+        trainingLogDao.eliminarPorId(id)
+    }
+
+    suspend fun eliminarLog(log: TrainingLogEntity) {
+        trainingLogDao.eliminar(log)
+    }
+
+    // --- Operaciones con Ejercicios Disponibles (persistidos) ---
+    fun obtenerEjerciciosDisponibles(): Flow<List<EjercicioDisponibleEntity>> {
+        return ejercicioDisponibleDao.obtenerTodos()
+    }
+
+    suspend fun insertarEjerciciosDisponibles(lista: List<EjercicioDisponibleEntity>) {
+        ejercicioDisponibleDao.insertarLista(lista)
+    }
+
+    suspend fun countEjerciciosDisponibles(): Int {
+        return ejercicioDisponibleDao.count()
     }
 }

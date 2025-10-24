@@ -12,6 +12,8 @@ class ViewModelFactory(private val repository: ForceTrackRepository) : ViewModel
             modelClass.isAssignableFrom(BloquesViewModel::class.java) -> BloquesViewModel(repository) as T
             modelClass.isAssignableFrom(SplitViewModel::class.java) -> SplitViewModel(repository) as T // Añadido
             modelClass.isAssignableFrom(RutinaViewModel::class.java) -> RutinaViewModel(repository) as T
+            modelClass.isAssignableFrom(TrainingLogViewModel::class.java) -> TrainingLogViewModel(repository) as T
+            modelClass.isAssignableFrom(EjerciciosViewModel::class.java) -> EjerciciosViewModel(repository) as T
             else -> throw IllegalArgumentException("Clase de ViewModel Desconocida: ${modelClass.name}")
         }
     }

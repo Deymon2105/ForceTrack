@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.example.forcetrack.database.dao.*
 import com.example.forcetrack.database.entity.*
 
@@ -17,11 +18,14 @@ import com.example.forcetrack.database.entity.*
         SemanaEntity::class,
         DiaEntity::class,
         EjercicioEntity::class,
-        SerieEntity::class
+        SerieEntity::class,
+        TrainingLogEntity::class, // nueva entidad de logs diarios
+        EjercicioDisponibleEntity::class // nueva entidad de ejercicios disponibles
     ],
-    version = 1, // La versión de la base de datos. Incrementar si se cambia el esquema.
+    version = 4, // Incrementada la versión por la nueva entidad e índice único
     exportSchema = false // No exportar el esquema de la BD a un archivo. Para este proyecto no es necesario.
 )
+@TypeConverters(Conversores::class)
 abstract class AppDatabase : RoomDatabase() {
 
     // Métodos abstractos para que Room nos proporcione una instancia de cada DAO.
@@ -31,6 +35,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun diaDao(): DiaDao
     abstract fun ejercicioDao(): EjercicioDao
     abstract fun serieDao(): SerieDao
+    abstract fun trainingLogDao(): TrainingLogDao // nuevo DAO
+    abstract fun ejercicioDisponibleDao(): EjercicioDisponibleDao // nuevo DAO
 
     // El "companion object" nos permite acceder a los métodos para crear o obtener la base de datos
     // sin necesidad de instanciar la clase AppDatabase.
@@ -53,7 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "forcetrack_database" // El nombre del archivo de la base de datos en el dispositivo.
                 )
-                // .fallbackToDestructiveMigration() // Descomentar si no quieres crear migraciones complejas.
+                .fallbackToDestructiveMigration() // Evita errores de migración en desarrollo
                 .build()
                 INSTANCE = instance
                 instance

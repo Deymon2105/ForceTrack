@@ -23,33 +23,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.forcetrack.model.EjercicioDisponible
 
-// Lista estática de ejercicios disponibles. En una aplicación real, esto provendría de la base de datos.
-private val ejerciciosDisponibles = listOf(
-    EjercicioDisponible("Pecho", "Press de Banca"),
-    EjercicioDisponible("Pecho", "Press Inclinado con Mancuernas"),
-    EjercicioDisponible("Pecho", "Aperturas con Mancuernas"),
-    EjercicioDisponible("Espalda", "Dominadas"),
-    EjercicioDisponible("Espalda", "Remo con Barra"),
-    EjercicioDisponible("Espalda", "Jalón al Pecho"),
-    EjercicioDisponible("Pierna", "Sentadillas"),
-    EjercicioDisponible("Pierna", "Prensa de Piernas"),
-    EjercicioDisponible("Pierna", "Zancadas"),
-    EjercicioDisponible("Hombro", "Press Militar"),
-    EjercicioDisponible("Hombro", "Elevaciones Laterales"),
-    EjercicioDisponible("Bícep", "Curl con Barra"),
-    EjercicioDisponible("Trícep", "Press Francés")
-).sortedBy { it.nombre }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EjerciciosScreen(
+    ejerciciosDisponibles: List<EjercicioDisponible>,
     onEjercicioAdd: (EjercicioDisponible) -> Unit,
     onBackPressed: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
     // Filtra la lista de ejercicios basándose en la búsqueda del usuario.
-    val filteredEjercicios = remember(searchQuery) {
+    val filteredEjercicios = remember(searchQuery, ejerciciosDisponibles) {
         if (searchQuery.isBlank()) {
             ejerciciosDisponibles
         } else {
