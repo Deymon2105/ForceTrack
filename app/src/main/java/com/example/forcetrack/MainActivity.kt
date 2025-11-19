@@ -1,6 +1,7 @@
 package com.example.forcetrack
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +16,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.forcetrack.config.AppRoutes
+import com.example.forcetrack.network.test.XanoTester
 import com.example.forcetrack.ui.*
 import com.example.forcetrack.ui.theme.ForcetrackTheme
 import com.example.forcetrack.viewmodel.*
@@ -24,8 +27,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val repository = (application as ForceTrackApplication).repository
-        val viewModelFactory = ViewModelFactory(repository)
+        val app = application as ForceTrackApplication
+        val repository = app.repository
+        val sessionManager = app.sessionManager
+        val syncService = app.syncService
+        val viewModelFactory = ViewModelFactory(repository, sessionManager, syncService)
+
+        // 🧪 PRUEBA XANO - Descomenta para probar la conexión
+        XanoTester.testRapido() // Test rápido de login
+        // XanoTester.testSoloLectura(usuarioId = 1) // Test de lectura
+        // XanoTester.testearTodo(usuarioId = 1) // Test completo
+        Log.d("MainActivity", "Xano configurado y listo para usar")
 
         setContent {
             ForcetrackTheme {
@@ -33,37 +45,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-// Objeto que centraliza las rutas para evitar errores tipográficos y facilitar la navegación
-object AppRoutes {
-    const val LOGIN = "login"
-    const val REGISTER = "register"
-    const val BLOQUES_ROUTE = "bloques"
-    const val BLOQUES_ARG = "usuarioId"
-    const val BLOQUES = "$BLOQUES_ROUTE/{$BLOQUES_ARG}"
-
-    const val SPLIT_ROUTE = "split"
-    const val SPLIT_ARG = "bloqueId"
-    const val SPLIT = "$SPLIT_ROUTE/{$SPLIT_ARG}"
-
-    const val RUTINA_ROUTE = "rutina"
-    const val RUTINA_ARG = "diaId"
-    const val RUTINA = "$RUTINA_ROUTE/{$RUTINA_ARG}"
-
-    const val EJERCICIOS_ROUTE = "ejercicios"
-    const val EJERCICIOS_ARG = "diaId"
-    const val EJERCICIOS = "$EJERCICIOS_ROUTE/{$EJERCICIOS_ARG}"
-
-    // Nuevas rutas para calendario y registro diario
-    const val CALENDAR_ROUTE = "calendar"
-    const val CALENDAR_ARG = "usuarioId"
-    const val CALENDAR = "$CALENDAR_ROUTE/{$CALENDAR_ARG}"
-
-    const val DAILY_ROUTE = "daily"
-    const val DAILY_ARG_USER = "usuarioId"
-    const val DAILY_ARG_DATE = "dateIso"
-    const val DAILY = "$DAILY_ROUTE/{$DAILY_ARG_USER}/{$DAILY_ARG_DATE}"
 }
 
 @Composable
@@ -77,7 +58,7 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
         when (authState.authState) {
             AuthState.LOGGED_IN -> {
                 val userId = authState.currentUser?.id ?: return@LaunchedEffect
-                navController.navigate("${AppRoutes.BLOQUES_ROUTE}/$userId") {
+                navController.navigate(AppRoutes.bloquesWithUserId(userId)) {
                     popUpTo(0) { inclusive = true } // Limpia el stack para que el usuario no pueda volver atrás.
                 }
             }
@@ -118,10 +99,11 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
             }
             
             BloquesScreen(
+                usuarioId = usuarioId,
                 bloquesViewModel = bloquesViewModel,
-                onBloqueSelected = { bloqueId -> navController.navigate("${AppRoutes.SPLIT_ROUTE}/$bloqueId") },
+                onBloqueSelected = { bloqueId -> navController.navigate(AppRoutes.splitWithBloqueId(bloqueId)) },
                 onLogout = { authViewModel.logout() },
-                onOpenCalendar = { navController.navigate("${AppRoutes.CALENDAR_ROUTE}/$usuarioId") }
+                onOpenCalendar = { navController.navigate(AppRoutes.calendarWithUserId(usuarioId)) }
             )
         }
 
@@ -138,7 +120,7 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
 
             SplitSemanalScreen(
                 splitViewModel = splitViewModel,
-                onDiaSelected = { diaId -> navController.navigate("${AppRoutes.RUTINA_ROUTE}/$diaId") },
+                onDiaSelected = { diaId -> navController.navigate(AppRoutes.rutinaWithDiaId(diaId)) },
                 onBackPressed = { navController.popBackStack() }
             )
         }
@@ -156,7 +138,7 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
 
             RutinaDiariaScreen(
                 rutinaViewModel = rutinaViewModel,
-                onAgregarEjercicio = { navController.navigate("${AppRoutes.EJERCICIOS_ROUTE}/$diaId") },
+                onAgregarEjercicio = { navController.navigate(AppRoutes.ejerciciosWithDiaId(diaId)) },
                 onBackPressed = { navController.popBackStack() }
             )
         }
@@ -166,7 +148,7 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
             arguments = listOf(navArgument(AppRoutes.EJERCICIOS_ARG) { type = NavType.IntType })
         ) { backStackEntry ->
             val diaId = backStackEntry.arguments?.getInt(AppRoutes.EJERCICIOS_ARG) ?: 0
-            val rutinaRoute = "${AppRoutes.RUTINA_ROUTE}/$diaId"
+            val rutinaRoute = AppRoutes.rutinaWithDiaId(diaId)
             val rutinaBackStackEntry = remember(backStackEntry) {
                 navController.getBackStackEntry(rutinaRoute)
             }
@@ -197,12 +179,14 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
             CalendarScreen(
                 usuarioId = usuarioId,
                 trainingLogViewModel = trainingLogViewModel,
-                onDateSelected = { dateIso -> navController.navigate("${AppRoutes.DAILY_ROUTE}/$usuarioId/$dateIso") },
+                onDateSelected = { dateIso ->
+                    navController.navigate(AppRoutes.dailyWithParams(usuarioId, dateIso))
+                },
                 onBack = { navController.popBackStack() }
             )
         }
 
-        // Composable para el detalle diario (usuarioId y dateIso como argumentos)
+        // Composable para el registro diario (usuarioId y fecha como argumentos)
         composable(
             route = AppRoutes.DAILY,
             arguments = listOf(

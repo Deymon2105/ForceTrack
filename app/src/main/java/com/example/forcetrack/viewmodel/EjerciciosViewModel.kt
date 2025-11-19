@@ -8,11 +8,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.update
 
 class EjerciciosViewModel(private val repository: ForceTrackRepository) : ViewModel() {
 
     private val _ejercicios = MutableStateFlow<List<EjercicioDisponible>>(emptyList())
     val ejercicios: StateFlow<List<EjercicioDisponible>> = _ejercicios.asStateFlow()
+
+    // ⛔ ANTI-SPAM: Control de operaciones en proceso
+    private val _operacionesEnProceso = MutableStateFlow<Set<String>>(emptySet())
+
+    fun isOperacionEnProceso(operacion: String): Boolean {
+        return _operacionesEnProceso.value.contains(operacion)
+    }
+
+    private fun marcarOperacionEnProceso(operacion: String) {
+        _operacionesEnProceso.update { it + operacion }
+    }
+
+    private fun liberarOperacion(operacion: String) {
+        _operacionesEnProceso.update { it - operacion }
+    }
 
     init {
         viewModelScope.launch {

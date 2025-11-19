@@ -88,7 +88,8 @@ fun RutinaDiariaScreen(
                                 onDeleteSerie = { serieId -> rutinaViewModel.eliminarSerie(ejercicio.id, serieId) },
                                 onUpdateSerie = { serie -> rutinaViewModel.actualizarSerie(serie) },
                                 onDeleteEjercicio = { rutinaViewModel.eliminarEjercicio(ejercicio.id) },
-                                onUpdateDescanso = { descanso -> rutinaViewModel.actualizarDescanso(ejercicio.id, descanso) }
+                                onUpdateDescanso = { descanso -> rutinaViewModel.actualizarDescanso(ejercicio.id, descanso) },
+                                isAddingSerieInProgress = rutinaViewModel.isOperacionEnProceso(ejercicio.id, "agregar_serie")
                             )
                         }
                     }
@@ -130,7 +131,8 @@ fun EjercicioCard(
     onAddSerie: () -> Unit,
     onDeleteSerie: (Int) -> Unit,
     onUpdateSerie: (Serie) -> Unit,
-    onUpdateDescanso: (Int) -> Unit
+    onUpdateDescanso: (Int) -> Unit,
+    isAddingSerieInProgress: Boolean // Nuevo parámetro
 ) {
     var mostrarDialogoEliminar by remember { mutableStateOf(false) }
 
@@ -165,7 +167,7 @@ fun EjercicioCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(ejercicio.nombre, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                IconButton(onClick = onAddSerie) {
+                IconButton(onClick = onAddSerie, enabled = !isAddingSerieInProgress) {
                     Icon(Icons.Default.Add, contentDescription = "Añadir Serie")
                 }
             }
@@ -195,12 +197,30 @@ fun EjercicioCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            var descansoText by remember(ejercicio.descanso) { mutableStateOf(ejercicio.descanso.toString()) }
+            // Estado local para Descanso con sincronización y validación (enteros >= 0)
+            var descansoText by remember(ejercicio.id, ejercicio.descanso) { mutableStateOf(if (ejercicio.descanso == 0) "" else ejercicio.descanso.toString()) }
+
+            // Sincronizar cuando el valor externo cambie
+            LaunchedEffect(ejercicio.descanso) {
+                val newDesc = if (ejercicio.descanso == 0) "" else ejercicio.descanso.toString()
+                if (descansoText != newDesc) descansoText = newDesc
+            }
+
             OutlinedTextField(
                 value = descansoText,
-                onValueChange = {
-                    descansoText = it
-                    it.toIntOrNull()?.let { descanso -> onUpdateDescanso(descanso) }
+                onValueChange = { input ->
+                    // Permitir solo dígitos
+                    val filtered = input.filter { it.isDigit() }
+                    descansoText = filtered
+
+                    filtered.toIntOrNull()?.let { d ->
+                        val clamped = if (d < 0) 0 else d
+                        if (clamped != ejercicio.descanso) {
+                            // Si se necesita, actualizar el campo para mostrar el valor permitido
+                            if (d < 0) descansoText = clamped.toString()
+                            onUpdateDescanso(clamped)
+                        }
+                    }
                 },
                 label = { Text("Descanso (segundos)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -226,34 +246,95 @@ fun SerieRow(
     onDelete: () -> Unit,
     canDelete: Boolean
 ) {
+    // Estados locales para permitir edición sin sobrescribir mientras el usuario escribe
+    var pesoText by remember(serie.id, serie.peso) { mutableStateOf(if (serie.peso == 0.0) "" else serie.peso.toString()) }
+    var repsText by remember(serie.id, serie.reps) { mutableStateOf(if (serie.reps == 0) "" else serie.reps.toString()) }
+    var rirText by remember(serie.id, serie.rir) { mutableStateOf(if (serie.rir == 0) "" else serie.rir.toString()) }
+
+    // Sincronizar cuando el estado externo (serie) cambie
+    LaunchedEffect(serie.peso, serie.reps, serie.rir) {
+        val newPeso = if (serie.peso == 0.0) "" else serie.peso.toString()
+        if (pesoText != newPeso) pesoText = newPeso
+        val newReps = if (serie.reps == 0) "" else serie.reps.toString()
+        if (repsText != newReps) repsText = newReps
+        val newRir = if (serie.rir == 0) "" else serie.rir.toString()
+        if (rirText != newRir) rirText = newRir
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text("#$serieNum", modifier = Modifier.width(40.dp), style = MaterialTheme.typography.bodyLarge)
 
-        EditableTextField(
-            value = if (serie.peso == 0.0) "" else serie.peso.toString(),
-            onValueChange = { newValue ->
-                val peso = newValue.toDoubleOrNull() ?: 0.0
-                onUpdate(serie.copy(peso = peso))
-            }
+        // Peso (decimal permitido, >= 0)
+        OutlinedTextField(
+            value = pesoText,
+            onValueChange = { input ->
+                // Permitir sólo dígitos y un punto decimal
+                val filtered = input.filter { it.isDigit() || it == '.' }
+                // eliminar puntos adicionales
+                val sanitized = if (filtered.count { it == '.' } > 1) {
+                    var seen = false
+                    filtered.filter { ch -> if (ch == '.') { if (!seen) { seen = true; true } else false } else true }
+                } else filtered
+
+                pesoText = sanitized
+
+                // Si es parseable, actualizar modelo y aplicar clamp (no menor que 0)
+                sanitized.toDoubleOrNull()?.let { v ->
+                    val clamped = if (v < 0.0) 0.0 else v
+                    if (clamped != serie.peso) onUpdate(serie.copy(peso = clamped))
+                }
+            },
+            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true
         )
 
-        EditableTextField(
-            value = if (serie.reps == 0) "" else serie.reps.toString(),
-            onValueChange = {
-                val reps = it.toIntOrNull() ?: 0
-                onUpdate(serie.copy(reps = reps))
-            }
+        // Reps (enteros, >= 1)
+        OutlinedTextField(
+            value = repsText,
+            onValueChange = { input ->
+                val filtered = input.filter { it.isDigit() }
+                // Evitar prefijos vacíos inesperados
+                val sanitized = filtered
+                repsText = sanitized
+
+                sanitized.toIntOrNull()?.let { v ->
+                    val clamped = if (v < 1) 1 else v
+                    if (clamped != serie.reps) {
+                        // si el usuario ingresó 0 o menor, forzamos a 1 en el campo también
+                        if (v < 1) repsText = clamped.toString()
+                        onUpdate(serie.copy(reps = clamped))
+                    }
+                }
+            },
+            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true
         )
 
-        EditableTextField(
-            value = if (serie.rir == 0) "" else serie.rir.toString(),
-            onValueChange = {
-                val rir = it.toIntOrNull() ?: 0
-                onUpdate(serie.copy(rir = rir))
-            }
+        // RIR (enteros, 0..5)
+        OutlinedTextField(
+            value = rirText,
+            onValueChange = { input ->
+                val filtered = input.filter { it.isDigit() }
+                val sanitized = filtered
+                rirText = sanitized
+
+                sanitized.toIntOrNull()?.let { v ->
+                    val clamped = v.coerceIn(0, 5)
+                    if (clamped != serie.rir) {
+                        // Si el usuario excede, actualizamos el campo para mostrar el valor permitido
+                        if (v != clamped) rirText = clamped.toString()
+                        onUpdate(serie.copy(rir = clamped))
+                    }
+                }
+            },
+            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true
         )
 
         if (canDelete) {

@@ -5,6 +5,8 @@ import com.example.forcetrack.database.AppDatabase
 import com.example.forcetrack.database.repository.ForceTrackRepository
 import com.example.forcetrack.database.entity.EjercicioDisponibleEntity
 import com.example.forcetrack.repository.MockRepository
+import com.example.forcetrack.network.repository.RemoteRepository
+import com.example.forcetrack.network.sync.SyncService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,10 +31,19 @@ class ForceTrackApplication : Application() {
             database.diaDao(),
             database.ejercicioDao(),
             database.serieDao(),
-            database.trainingLogDao(), // añadido
+            database.trainingLogDao(),
             database.ejercicioDisponibleDao()
         )
     }
+
+    // Repositorio remoto para comunicación con Xano
+    val remoteRepository by lazy { RemoteRepository() }
+
+    // Servicio de sincronización con Xano
+    val syncService by lazy { SyncService() }
+
+    // Exponer SessionManager para persistir la sesión del usuario en el dispositivo
+    val sessionManager by lazy { SessionManager(this) }
 
     override fun onCreate() {
         super.onCreate()

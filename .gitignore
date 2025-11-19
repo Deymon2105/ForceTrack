@@ -1,15 +1,99 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
+# ========== GRADLE BUILD ==========
+.gradle/
+build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# ========== IDEA / ANDROID STUDIO ==========
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/modules.xml
+.idea/navEditor.xml
+
+# ========== KOTLIN ==========
+.kotlin/
+
+# ========== ARCHIVOS TEMPORALES ==========
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ========== ARCHIVOS DE BUILD ==========
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+app/release/
+
+# ========== NDK ==========
+obj/
+.externalNativeBuild/
+
+# ========== SEGURIDAD - FIRMA DE APLICACION ==========
+# IMPORTANTE: Nunca subir estos archivos a Git
+*.jks
+*.keystore
+keystore.properties
+release-keystore.jks
+forcetrack-release-key.jks
+
+# ========== ARCHIVOS INNECESARIOS DEL PROYECTO ==========
+build-output.txt
+INSTRUCCIONES_SOLUCION.md
+eliminar_archivos_innecesarios.bat
+eliminar_archivos_firma.bat
+generar_keystore.bat
+
+# ========== DOCUMENTACION TEMPORAL ==========
+ARCHIVOS_ELIMINADOS_BACKUP.md
+BACKEND_SETUP.md
+CONFIGURACION_XANO_COMPLETA.md
+CORRECCION_ERRORES.md
+DATABASE_SQL_SCHEMA.md
+ERRORES_SOLUCIONADOS.md
+GUIA_XANO_COMPLETA.md
+INSTRUCCIONES_SOLUCION.md
+LIMPIEZA_PROYECTO.md
+OPTIMIZACIONES_REALIZADAS.md
+PERSISTENCIA_EXTERNA.md
+PRUEBAS_XANO.md
+REFACTORIZACION_SEGURIDAD.md
+REQUEST_QUEUE_IMPLEMENTACION.md
+SISTEMA_ANTI_SPAM_COMPLETO.md
+SOLUCION_ERROR_429.md
+XANO_ANDROID_SETUP.md
+XANO_ENDPOINTS_GUIA.md
+XANO_GUIA_INSTALACION.md
+XANO_TUTORIAL_VISUAL.md
+XANO_DATABASE_SETUP.sql
+XANO_SCHEMA_SIMPLE.sql
+GUIA_FIRMA_APP.md
+FIRMA_RAPIDA.md
+INSTRUCCIONES_FIRMA_VISUAL.md
+PROXIMOS_PASOS.md
+
+# ========== BACKEND ==========
+backend/node_modules/
+backend/*.db
+backend/.env
+backend/npm-debug.log

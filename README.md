@@ -1,109 +1,110 @@
-# ForceTrack - Aplicación de Seguimiento de Entrenamiento
+# ForceTrack - Aplicación de Seguimiento de Entrenamientos
 
-## Estructura del Proyecto (SQLite con Room)
+Aplicación Android para gestionar y registrar entrenamientos de gimnasio de forma sencilla y efectiva.
 
-Este proyecto usa SQLite con Room para almacenar todos los datos de forma local en el dispositivo.
+## 🏋️ Características
 
-### 📁 Base de Datos
+- **Gestión de Bloques**: Organiza tus entrenamientos en bloques personalizados
+- **Splits Semanales**: Crea splits de entrenamiento por semanas
+- **Rutinas Diarias**: Programa ejercicios específicos para cada día
+- **Registro de Series**: Guarda peso, repeticiones y RIR para cada serie
+- **Calendario de Entrenamientos**: Visualiza tu progreso con un calendario interactivo
+- **Seguimiento de Rachas**: Mantén la motivación con el contador de rachas
+- **Modo Offline**: Todos tus datos se guardan localmente
+- **Sincronización con Xano**: Backend en la nube para respaldo de datos
 
-**Ubicación:** `database/`
+## 🚀 Tecnologías
 
-#### Entidades (Tablas)
-- `UsuarioEntity` - Tabla de usuarios
-- `BloqueEntity` - Bloques de entrenamiento
-- `SemanaEntity` - Semanas dentro de cada bloque
-- `DiaEntity` - Días de entrenamiento
-- `EjercicioEntity` - Ejercicios de cada día
-- `SerieEntity` - Series de cada ejercicio
+- **Kotlin** - Lenguaje de programación
+- **Jetpack Compose** - UI moderna y declarativa
+- **Room Database** - Persistencia local de datos
+- **Retrofit** - Cliente HTTP para API REST
+- **Xano** - Backend como servicio
+- **Coroutines & Flow** - Programación asíncrona
+- **Material Design 3** - Diseño moderno
 
-#### DAOs (Acceso a Datos)
-Cada entidad tiene su propio DAO que maneja las operaciones de base de datos:
-- `UsuarioDao` - Operaciones con usuarios
-- `BloqueDao` - Operaciones con bloques
-- `SemanaDao` - Operaciones con semanas
-- `DiaDao` - Operaciones con días
-- `EjercicioDao` - Operaciones con ejercicios
-- `SerieDao` - Operaciones con series
+## 📱 Arquitectura
 
-#### Repositorio
-`ForceTrackRepository` - Maneja todas las operaciones de la base de datos de forma centralizada
+```
+app/
+├── config/          # Configuración (API, Rutas)
+├── database/        # Room (Entities, DAOs, Repository)
+├── model/           # Modelos de dominio
+├── network/         # Retrofit, DTOs, RequestQueue
+├── ui/              # Pantallas Compose
+├── utils/           # Utilidades
+└── viewmodel/       # ViewModels (MVVM)
+```
 
-### 📦 Modelos
+## 🔐 Seguridad
 
-**Ubicación:** `model/`
+- RequestQueue con rate limiting (2 req/seg, 800ms delay)
+- Reintentos automáticos con exponential backoff
+- Configuración de API en módulo separado
+- Ofuscación de código con R8/ProGuard
 
-Modelos simples para usar en la interfaz de usuario:
-- `Usuario` - Información del usuario
-- `BloqueEntrenamiento` - Bloque con semanas
-- `SemanaEntrenamiento` - Semana con días
-- `DiaRutina` - Día con ejercicios
-- `EjercicioRutina` - Ejercicio con series
-- `Serie` - Serie con peso, repeticiones y RIR
+## 📋 Requisitos
 
-### 🎨 Interfaz de Usuario
+- Android 7.0 (API 24) o superior
+- Android Studio Hedgehog o superior
+- JDK 17
+- Gradle 8.x
 
-**Ubicación:** `ui/`
+## 🛠️ Instalación
 
-- `LoginScreen` - Pantalla de inicio de sesión
-- `RegistroScreen` - Pantalla de registro
-- `BloquesScreen` - Lista de bloques de entrenamiento
-- `SplitSemanalScreen` - Vista semanal del bloque
-- `RutinaDiariaScreen` - Rutina diaria con ejercicios y series
-- `EjerciciosScreen` - Selector de ejercicios disponibles
-- `LoadingScreen` - Pantalla de carga
+1. Clona el repositorio:
+```bash
+git clone https://github.com/tuusuario/forcetrack.git
+```
 
-### 🧠 ViewModels
+2. Abre el proyecto en Android Studio
 
-**Ubicación:** `viewmodel/`
+3. Sincroniza las dependencias de Gradle
 
-- `AuthViewModel` - Maneja autenticación (login/registro)
-- `BloquesViewModel` - Maneja bloques de entrenamiento
-- `RutinaViewModel` - Maneja ejercicios y series del día
+4. Ejecuta la aplicación en un emulador o dispositivo físico
 
-### 🎨 Tema
+## 🔧 Configuración
 
-**Ubicación:** `ui/theme/`
+La configuración de la API de Xano está en:
+```
+app/src/main/java/com/example/forcetrack/config/ApiConfig.kt
+```
 
-Colores personalizados:
-- Fondo: #0d1016
-- Botones: #28C76F
-- Texto y títulos: #c0c2c4
-- Texto de inputs: #3a97c0
-- Inputs: #161b24
+Para cambiar las URLs de los endpoints, modifica los valores en `ApiConfig`.
 
-## 🚀 Características
+## 📦 Compilar APK Firmado
 
-1. **Autenticación Simple** - Login y registro con SQLite
-2. **Bloques de Entrenamiento** - Crea bloques personalizados
-3. **Gestión de Semanas** - Organiza tu entrenamiento por semanas
-4. **Rutinas Diarias** - Agrega ejercicios a cada día
-5. **Series Dinámicas** - Agrega/elimina series en tiempo real
-6. **Notas** - Guarda notas de cada sesión
-7. **Persistencia** - Todos los datos se guardan localmente
+1. En Android Studio: **Build** → **Generate Signed Bundle / APK**
+2. Selecciona **Android App Bundle**
+3. Crea o selecciona un keystore
+4. El archivo se generará en `app/release/`
 
-## 📝 Código Simple y Autoexplicativo
+## 🤝 Contribuir
 
-El código está diseñado para ser fácil de entender:
-- Nombres descriptivos en español
-- Comentarios claros
-- Funciones simples y directas
-- Sin complejidad innecesaria
+Las contribuciones son bienvenidas. Por favor:
 
-## 🔧 Dependencias
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
-- Room (SQLite) - Base de datos local
-- Jetpack Compose - Interfaz de usuario moderna
-- Coroutines - Operaciones asíncronas
-- Material 3 - Diseño moderno
+## 📄 Licencia
 
-## 💡 Flujo de la Aplicación
+Este proyecto está bajo la Licencia MIT - ver el archivo LICENSE para más detalles.
 
-1. Usuario se registra o inicia sesión
-2. Ve su lista de bloques (vacía al inicio)
-3. Crea un nuevo bloque con semanas
-4. Selecciona un día para entrenar
-5. Agrega ejercicios con series
-6. Registra peso, repeticiones y RIR
-7. Guarda notas de la sesión
-8. Todos los datos se guardan automáticamente en SQLite
+## 👤 Autor
+
+Tu Nombre - [@tuusuario](https://github.com/tuusuario)
+
+## 🙏 Agradecimientos
+
+- Material Design por los iconos
+- Jetpack Compose por facilitar el desarrollo UI
+- Xano por el backend
+
+---
+
+**Versión actual:** 1.0 (versionCode: 1)
+**Última actualización:** Noviembre 2025
 

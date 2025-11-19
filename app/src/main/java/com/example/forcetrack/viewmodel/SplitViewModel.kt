@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class SplitUiState(
@@ -28,6 +29,21 @@ class SplitViewModel(private val repository: ForceTrackRepository) : ViewModel()
 
     // Mantener jobs por día para suscribirnos a los flows de ejercicios de cada día
     private val diaJobs = mutableMapOf<Int, Job>()
+
+    // ⛔ ANTI-SPAM: Control de operaciones en proceso
+    private val _operacionesEnProceso = MutableStateFlow<Set<String>>(emptySet())
+
+    fun isOperacionEnProceso(operacion: String): Boolean {
+        return _operacionesEnProceso.value.contains(operacion)
+    }
+
+    private fun marcarOperacionEnProceso(operacion: String) {
+        _operacionesEnProceso.update { it + operacion }
+    }
+
+    private fun liberarOperacion(operacion: String) {
+        _operacionesEnProceso.update { it - operacion }
+    }
 
     fun loadBlockDetails(bloqueId: Int) {
         // Cancelar jobs anteriores

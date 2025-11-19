@@ -21,6 +21,11 @@ class ForceTrackRepository(
         return if (usuario != null && usuario.contrasena == contrasena) usuario else null
     }
 
+    suspend fun iniciarSesionPorCorreo(correo: String, contrasena: String): UsuarioEntity? {
+        val usuario = usuarioDao.obtenerUsuarioPorCorreo(correo)
+        return if (usuario != null && usuario.contrasena == contrasena) usuario else null
+    }
+
     suspend fun usuarioExiste(nombreUsuario: String): Boolean {
         return usuarioDao.obtenerUsuarioPorNombre(nombreUsuario) != null
     }

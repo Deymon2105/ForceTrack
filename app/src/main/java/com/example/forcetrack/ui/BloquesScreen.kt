@@ -23,21 +23,36 @@ import com.example.forcetrack.viewmodel.BloquesViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BloquesScreen(
+    usuarioId: Int,
     bloquesViewModel: BloquesViewModel,
     onBloqueSelected: (Int) -> Unit,
     onLogout: () -> Unit,
-    onOpenCalendar: () -> Unit // añadido
+    onOpenCalendar: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var bloqueToDelete by remember { mutableStateOf<BloqueEntity?>(null) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     val uiState by bloquesViewModel.uiState.collectAsState()
+
+    // Snackbar para mostrar mensajes de error
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Mostrar errores en un Snackbar
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            bloquesViewModel.clearError()
+        }
+    }
 
     if (showCreateDialog) {
         CreateBloqueDialog(
             onDismiss = { showCreateDialog = false },
             onConfirm = { nombre, numSemanas, numDias ->
-                // TODO: El usuarioId debería venir del AuthViewModel
-                bloquesViewModel.crearBloque(nombre, 1 , numSemanas, numDias)
+                bloquesViewModel.crearBloque(nombre, usuarioId, numSemanas, numDias)
                 showCreateDialog = false
             }
         )
@@ -54,7 +69,18 @@ fun BloquesScreen(
         )
     }
 
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            onDismiss = { showLogoutDialog = false },
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
+            }
+        )
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Mis Bloques", fontWeight = FontWeight.Bold) },
@@ -62,31 +88,29 @@ fun BloquesScreen(
                     IconButton(onClick = onOpenCalendar) {
                         Icon(Icons.Default.CalendarToday, "Calendario")
                     }
-                    IconButton(onClick = onLogout) {
+                    IconButton(onClick = { showLogoutDialog = true }) {
                         Icon(Icons.AutoMirrored.Filled.Logout, "Cerrar sesión")
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
+            FloatingActionButton(
+                onClick = { showCreateDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
                 Icon(Icons.Default.Add, "Crear nuevo bloque")
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             when {
-                uiState.isLoading -> {
+                uiState.isLoading && uiState.bloques.isEmpty() -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
-                uiState.errorMessage != null -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Error: ${uiState.errorMessage}")
-                    }
-                }
-                uiState.bloques.isEmpty() -> {
+                uiState.bloques.isEmpty() && !uiState.isLoading -> {
                     EmptyState()
                 }
                 else -> {
@@ -100,6 +124,20 @@ fun BloquesScreen(
                                 onClick = { onBloqueSelected(bloque.id) },
                                 onDelete = { bloqueToDelete = bloque }
                             )
+                        }
+
+                        // Mostrar indicador de carga al final si se está actualizando
+                        if (uiState.isLoading) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -141,19 +179,72 @@ private fun CreateBloqueDialog(onDismiss: () -> Unit, onConfirm: (String, Int, I
     var nombre by remember { mutableStateOf("") }
     var numSemanas by remember { mutableStateOf("4") }
     var numDias by remember { mutableStateOf("7") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Nuevo Bloque") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre del Bloque") })
-                OutlinedTextField(value = numSemanas, onValueChange = { numSemanas = it }, label = { Text("Número de Semanas") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(value = numDias, onValueChange = { numDias = it }, label = { Text("Días por semana (1-7)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = {
+                        nombre = it
+                        errorMessage = null
+                    },
+                    label = { Text("Nombre del Bloque") },
+                    isError = nombre.isBlank() && errorMessage != null,
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = numSemanas,
+                    onValueChange = {
+                        if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                            numSemanas = it
+                            errorMessage = null
+                        }
+                    },
+                    label = { Text("Número de Semanas") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = numDias,
+                    onValueChange = {
+                        if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                            numDias = it
+                            errorMessage = null
+                        }
+                    },
+                    label = { Text("Días por semana (1-7)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+
+                errorMessage?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(nombre, numSemanas.toIntOrNull() ?: 4, numDias.toIntOrNull() ?: 7) }) {
+            Button(
+                onClick = {
+                    when {
+                        nombre.isBlank() -> errorMessage = "El nombre no puede estar vacío"
+                        numSemanas.toIntOrNull() == null || numSemanas.toInt() <= 0 ->
+                            errorMessage = "Las semanas deben ser mayor a 0"
+                        numDias.toIntOrNull() == null || numDias.toInt() !in 1..7 ->
+                            errorMessage = "Los días deben estar entre 1 y 7"
+                        else -> {
+                            onConfirm(nombre, numSemanas.toInt(), numDias.toInt())
+                        }
+                    }
+                }
+            ) {
                 Text("Crear")
             }
         },
@@ -176,6 +267,48 @@ private fun DeleteBloqueDialog(bloque: BloqueEntity, onDismiss: () -> Unit, onCo
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@Composable
+private fun LogoutConfirmationDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.AutoMirrored.Filled.Logout,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+        },
+        title = {
+            Text(
+                "Cerrar Sesión",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Text(
+                "¿Estás seguro que deseas cerrar sesión?",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("Cerrar Sesión")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
         }
     )
 }
