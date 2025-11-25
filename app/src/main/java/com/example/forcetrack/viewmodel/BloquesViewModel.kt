@@ -24,12 +24,10 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
     private val _uiState = MutableStateFlow(BloquesUiState())
     val uiState: StateFlow<BloquesUiState> = _uiState.asStateFlow()
 
-    // Repositorio remoto para Xano
     private val remoteRepository = RemoteRepository()
-
     private var currentUsuarioId: Int? = null
 
-    // ⛔ ANTI-SPAM: Control de operaciones en proceso
+    // Control de operaciones en proceso
     private val _operacionesEnProceso = MutableStateFlow<Set<String>>(emptySet())
 
     private fun isOperacionEnProceso(operacion: String): Boolean {
@@ -44,7 +42,8 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
         _operacionesEnProceso.update { it - operacion }
     }
 
-    // Carga los bloques para un usuario específico desde Xano
+    // Carga los bloques desde la base de datos LOCAL (rápido)
+    // Y sincroniza con Xano en segundo plano
     fun cargarBloques(usuarioId: Int) {
         currentUsuarioId = usuarioId
 
@@ -52,49 +51,23 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             try {
-                Log.d("BloquesViewModel", "Obteniendo bloques desde Xano para usuario $usuarioId...")
+                Log.d("BloquesViewModel", "Cargando bloques locales para usuario $usuarioId...")
 
-                remoteRepository.getBloques(usuarioId)
-                    .onSuccess { bloquesDto ->
-                        Log.d("BloquesViewModel", "Bloques obtenidos: ${bloquesDto.size}")
+                // 1. Cargar desde BD local PRIMERO (instantáneo)
+                repository.obtenerBloques(usuarioId).collect { bloquesLocales ->
+                    Log.d("BloquesViewModel", "Bloques locales cargados: ${bloquesLocales.size}")
+                    _uiState.value = BloquesUiState(
+                        bloques = bloquesLocales,
+                        isLoading = false,
+                        errorMessage = null
+                    )
+                }
 
-                        // Convertir DTOs a entities para la UI
-                        val bloques = bloquesDto.map { dto ->
-                            BloqueEntity(
-                                id = dto.id,
-                                usuarioId = dto.usuarioId,
-                                nombre = dto.nombre
-                            )
-                        }
+                // 2. Sincronizar con Xano EN SEGUNDO PLANO (no bloqueante)
+                sincronizarConXano(usuarioId)
 
-                        // Actualizar también la BD local para cache
-                        bloques.forEach { bloque ->
-                            try {
-                                repository.crearBloque(bloque.nombre, bloque.usuarioId)
-                            } catch (e: Exception) {
-                                // Ya existe, ignorar
-                            }
-                        }
-
-                        _uiState.value = BloquesUiState(
-                            bloques = bloques,
-                            isLoading = false,
-                            errorMessage = null
-                        )
-                    }
-                    .onFailure { error ->
-                        Log.e("BloquesViewModel", "Error obteniendo bloques: ${error.message}")
-                        // Intentar cargar desde BD local como fallback
-                        repository.obtenerBloques(usuarioId).collect { bloquesLocales ->
-                            _uiState.value = BloquesUiState(
-                                bloques = bloquesLocales,
-                                isLoading = false,
-                                errorMessage = "Modo offline: ${error.message}"
-                            )
-                        }
-                    }
             } catch (e: Exception) {
-                Log.e("BloquesViewModel", "Error general: ${e.message}")
+                Log.e("BloquesViewModel", "Error cargando bloques: ${e.message}")
                 _uiState.value = BloquesUiState(
                     bloques = emptyList(),
                     isLoading = false,
@@ -104,9 +77,37 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
         }
     }
 
-    // Crea un nuevo bloque en Xano con sus semanas y días
+    // Sincroniza bloques de Xano a BD local (en segundo plano)
+    private fun sincronizarConXano(usuarioId: Int) {
+        viewModelScope.launch {
+            try {
+                Log.d("BloquesViewModel", "Sincronizando con Xano en segundo plano...")
+
+                remoteRepository.getBloques(usuarioId)
+                    .onSuccess { bloquesDto ->
+                        Log.d("BloquesViewModel", "Bloques de Xano obtenidos: ${bloquesDto.size}")
+
+                        // Actualizar BD local con datos de Xano
+                        bloquesDto.forEach { dto ->
+                            try {
+                                repository.crearBloque(dto.nombre, dto.usuarioId)
+                            } catch (_: Exception) {
+                                // Ya existe, ignorar
+                            }
+                        }
+                    }
+                    .onFailure { error ->
+                        Log.w("BloquesViewModel", "No se pudo sincronizar con Xano: ${error.message}")
+                        // No mostrar error al usuario, los datos locales ya están
+                    }
+            } catch (e: Exception) {
+                Log.w("BloquesViewModel", "Error en sincronización: ${e.message}")
+            }
+        }
+    }
+
+    // Crea un bloque LOCALMENTE (instantáneo) y lo sube a Xano en segundo plano
     fun crearBloque(nombre: String, usuarioId: Int, numeroSemanas: Int, numeroDiasPorSemana: Int = 7) {
-        // ANTI-SPAM: Evitar múltiples clicks al crear bloque
         if (isOperacionEnProceso("crear_bloque")) {
             Log.d("BloquesViewModel", "Creación de bloque ya en proceso, ignorando...")
             return
@@ -117,8 +118,8 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
             return
         }
 
-        if (numeroSemanas <= 0) {
-            _uiState.value = _uiState.value.copy(errorMessage = "El número de semanas debe ser mayor a 0")
+        if (numeroSemanas <= 0 || numeroSemanas > 52) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Número de semanas debe estar entre 1 y 52")
             return
         }
 
@@ -127,7 +128,64 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             try {
-                Log.d("BloquesViewModel", "Creando bloque '$nombre' con RequestQueue automático...")
+                Log.d("BloquesViewModel", "Creando bloque '$nombre' localmente...")
+
+                // 1. CREAR LOCALMENTE PRIMERO (instantáneo)
+                val bloqueIdLong = repository.crearBloque(nombre, usuarioId)
+                val bloqueId = bloqueIdLong.toInt()
+                Log.d("BloquesViewModel", "Bloque creado localmente con ID: $bloqueId")
+
+                val diasPorSemana = numeroDiasPorSemana.coerceIn(1, 7)
+                val nombresDias = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+
+                // Crear semanas y días localmente
+                for (numeroSemana in 1..numeroSemanas) {
+                    val semanaIdLong = repository.crearSemana(bloqueId, numeroSemana)
+                    val semanaId = semanaIdLong.toInt()
+                    Log.d("BloquesViewModel", "Semana $numeroSemana creada localmente con ID: $semanaId")
+
+                    for (numeroDia in 1..diasPorSemana) {
+                        val nombreDia = if (numeroDia <= nombresDias.size) {
+                            nombresDias[numeroDia - 1]
+                        } else {
+                            "Día $numeroDia"
+                        }
+
+                        val diaIdLong = repository.crearDia(semanaId, nombreDia)
+                        val diaId = diaIdLong.toInt()
+                        Log.d("BloquesViewModel", "Día $nombreDia creado localmente con ID: $diaId")
+                    }
+                }
+
+                Log.d("BloquesViewModel", "Bloque '$nombre' creado completamente en BD local")
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = null
+                )
+
+                liberarOperacion("crear_bloque")
+
+                // 2. SUBIR A XANO EN SEGUNDO PLANO (no bloqueante)
+                subirBloqueAXano(bloqueId, nombre, usuarioId, numeroSemanas, diasPorSemana)
+
+            } catch (e: Exception) {
+                Log.e("BloquesViewModel", "Error creando bloque: ${e.message}")
+                e.printStackTrace()
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "Error al crear el bloque: ${e.message}"
+                )
+                liberarOperacion("crear_bloque")
+            }
+        }
+    }
+
+    // Sube el bloque y su estructura a Xano en segundo plano
+    private fun subirBloqueAXano(bloqueIdLocal: Int, nombre: String, usuarioId: Int, numeroSemanas: Int, diasPorSemana: Int) {
+        viewModelScope.launch {
+            try {
+                Log.d("BloquesViewModel", "Subiendo bloque '$nombre' (ID local: $bloqueIdLocal) a Xano en segundo plano...")
 
                 // Crear bloque en Xano
                 val bloqueDto = com.example.forcetrack.network.dto.BloqueDto(
@@ -139,11 +197,9 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
 
                 remoteRepository.createBloque(bloqueDto)
                     .onSuccess { bloqueCreado ->
-                        Log.d("BloquesViewModel", "Bloque creado con ID: ${bloqueCreado.id}")
+                        Log.d("BloquesViewModel", "Bloque subido a Xano con ID: ${bloqueCreado.id}")
 
-                        val diasPorSemana = numeroDiasPorSemana.coerceIn(1, 7)
-
-                        // NUEVO: SIN delays manuales - RequestQueue controla automáticamente
+                        // Crear semanas en Xano
                         for (i in 1..numeroSemanas) {
                             val semanaDto = com.example.forcetrack.network.dto.SemanaDto(
                                 id = 0,
@@ -154,62 +210,52 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
 
                             remoteRepository.createSemana(semanaDto)
                                 .onSuccess { semanaCreada ->
-                                    Log.d("BloquesViewModel", "Semana $i creada")
+                                    Log.d("BloquesViewModel", "Semana $i subida a Xano con ID: ${semanaCreada.id}")
 
-                                    // Crear días para esta semana
+                                    // Crear días en Xano
+                                    val nombresDias = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+
                                     for (d in 1..diasPorSemana) {
+                                        val nombreDia = if (d <= nombresDias.size) nombresDias[d - 1] else "Día $d"
+
                                         val diaDto = com.example.forcetrack.network.dto.DiaDto(
                                             id = 0,
                                             semanaId = semanaCreada.id,
-                                            nombre = "Día $d",
+                                            nombre = nombreDia,
                                             notas = null,
                                             ejercicios = null
                                         )
 
                                         remoteRepository.createDia(diaDto)
                                             .onSuccess {
-                                                Log.d("BloquesViewModel", "Día $d creado")
+                                                Log.d("BloquesViewModel", "Día $nombreDia subido a Xano")
                                             }
                                             .onFailure { error ->
-                                                Log.e("BloquesViewModel", "Error creando día: ${error.message}")
+                                                Log.w("BloquesViewModel", "Error subiendo día a Xano: ${error.message}")
                                             }
                                     }
                                 }
                                 .onFailure { error ->
-                                    Log.e("BloquesViewModel", "Error creando semana: ${error.message}")
+                                    Log.w("BloquesViewModel", "Error subiendo semana a Xano: ${error.message}")
                                 }
                         }
 
-                        // Pequeño delay solo antes de recargar
-                        kotlinx.coroutines.delay(500)
-
-                        // Recargar bloques
-                        cargarBloques(usuarioId)
-                        liberarOperacion("crear_bloque")
+                        Log.d("BloquesViewModel", "Bloque sincronizado completamente con Xano")
                     }
                     .onFailure { error ->
-                        Log.e("BloquesViewModel", "Error creando bloque: ${error.message}")
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            errorMessage = "Error al crear el bloque: ${error.message}"
-                        )
-                        liberarOperacion("crear_bloque")
+                        Log.w("BloquesViewModel", "Error subiendo bloque a Xano: ${error.message}")
+                        // No mostrar error al usuario, el bloque ya está guardado localmente
                     }
 
             } catch (e: Exception) {
-                Log.e("BloquesViewModel", "Error general: ${e.message}")
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = "Error: ${e.message}"
-                )
-                liberarOperacion("crear_bloque")
+                Log.w("BloquesViewModel", "Error en sincronización con Xano: ${e.message}")
+                // No afecta la experiencia del usuario
             }
         }
     }
 
-    // Elimina un bloque en Xano
+    // Elimina un bloque LOCALMENTE y de Xano
     fun eliminarBloque(bloqueId: Int) {
-        // ANTI-SPAM: Evitar múltiples clicks al eliminar bloque
         if (isOperacionEnProceso("eliminar_$bloqueId")) {
             Log.d("BloquesViewModel", "Eliminación de bloque ya en proceso, ignorando...")
             return
@@ -220,26 +266,43 @@ class BloquesViewModel(private val repository: ForceTrackRepository) : ViewModel
             try {
                 _uiState.value = _uiState.value.copy(errorMessage = null)
 
-                Log.d("BloquesViewModel", "Eliminando bloque $bloqueId en Xano...")
+                Log.d("BloquesViewModel", "Eliminando bloque $bloqueId localmente...")
+
+                // 1. Eliminar de BD local PRIMERO (instantáneo)
+                repository.eliminarBloque(bloqueId)
+                Log.d("BloquesViewModel", "Bloque eliminado de BD local")
+
+                liberarOperacion("eliminar_$bloqueId")
+
+                // 2. Eliminar de Xano EN SEGUNDO PLANO
+                eliminarBloqueDeXano(bloqueId)
+
+            } catch (e: Exception) {
+                Log.e("BloquesViewModel", "Error eliminando bloque: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Error al eliminar: ${e.message}"
+                )
+                liberarOperacion("eliminar_$bloqueId")
+            }
+        }
+    }
+
+    // Elimina el bloque de Xano en segundo plano
+    private fun eliminarBloqueDeXano(bloqueId: Int) {
+        viewModelScope.launch {
+            try {
+                Log.d("BloquesViewModel", "Eliminando bloque $bloqueId de Xano...")
 
                 remoteRepository.deleteBloque(bloqueId)
                     .onSuccess {
-                        Log.d("BloquesViewModel", "Bloque eliminado")
-                        // Recargar bloques
-                        currentUsuarioId?.let { cargarBloques(it) }
+                        Log.d("BloquesViewModel", "Bloque eliminado de Xano")
                     }
                     .onFailure { error ->
-                        Log.e("BloquesViewModel", "Error eliminando bloque: ${error.message}")
-                        _uiState.value = _uiState.value.copy(
-                            errorMessage = "Error al eliminar: ${error.message}"
-                        )
+                        Log.w("BloquesViewModel", "Error eliminando de Xano: ${error.message}")
+                        // No afecta al usuario, ya está eliminado localmente
                     }
-                    liberarOperacion("eliminar_$bloqueId")
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    errorMessage = "Error: ${e.message}"
-                )
-                liberarOperacion("eliminar_$bloqueId")
+                Log.w("BloquesViewModel", "Error en eliminación de Xano: ${e.message}")
             }
         }
     }

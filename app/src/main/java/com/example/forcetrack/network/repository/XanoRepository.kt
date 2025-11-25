@@ -5,13 +5,9 @@ import com.example.forcetrack.network.RequestQueue
 import com.example.forcetrack.network.api.*
 import android.util.Log
 
-/**
- * Repositorio para operaciones con Xano
- * Usa los endpoints REST estándar de Xano (GET, POST, PATCH, DELETE)
- * ⚡ AHORA CON SISTEMA ANTI-429: Todas las peticiones pasan por RequestQueue
- */
 class XanoRepository {
 
+    private val authApi = RetrofitClient.authApi
     private val usuarioApi = RetrofitClient.usuarioApi
     private val bloqueApi = RetrofitClient.bloqueApi
     private val semanaApi = RetrofitClient.semanaApi
@@ -31,32 +27,35 @@ class XanoRepository {
     ): Result<UsuarioDto> {
         return RequestQueue.execute(operation = {
             try {
-                Log.d("XanoRepository", "🔧 Creando CreateUsuarioRequest:")
+                Log.d("XanoRepository", "Creando CreateUsuarioRequest:")
                 Log.d("XanoRepository", "   nombreUsuario: $nombreUsuario")
                 Log.d("XanoRepository", "   correo: $correo")
                 Log.d("XanoRepository", "   contrasena: $contrasena")
 
                 val request = CreateUsuarioRequest(nombreUsuario, correo, contrasena)
-                Log.d("XanoRepository", "📤 Enviando request a Xano: $request")
+                Log.d("XanoRepository", "Enviando request a Xano usuario endpoint: $request")
 
                 val response = usuarioApi.createUsuario(request)
 
-                Log.d("XanoRepository", "📥 Respuesta recibida:")
+                Log.d("XanoRepository", "Respuesta recibida:")
                 Log.d("XanoRepository", "   Code: ${response.code()}")
                 Log.d("XanoRepository", "   Success: ${response.isSuccessful}")
                 Log.d("XanoRepository", "   Body: ${response.body()}")
                 Log.d("XanoRepository", "   ErrorBody: ${response.errorBody()?.string()}")
 
                 if (response.isSuccessful && response.body() != null) {
-                    Log.d("XanoRepository", "✅ Usuario creado exitosamente")
+                    Log.d("XanoRepository", "Usuario creado exitosamente")
+                    Log.d("XanoRepository", "   ID: ${response.body()!!.id}")
+                    Log.d("XanoRepository", "   Nombre: ${response.body()!!.nombreUsuario}")
                     Result.success(response.body()!!)
                 } else {
-                    val errorMsg = "Registro falló: ${response.code()} - ${response.message()}"
-                    Log.e("XanoRepository", "❌ $errorMsg")
+                    val errorBody = response.errorBody()?.string()
+                    val errorMsg = "Registro falló: ${response.code()} - ${response.message()} - $errorBody"
+                    Log.e("XanoRepository", "$errorMsg")
                     Result.failure(Exception(errorMsg))
                 }
             } catch (e: Exception) {
-                Log.e("XanoRepository", "❌ Excepción en register: ${e.message}")
+                Log.e("XanoRepository", "Excepción en register: ${e.message}")
                 e.printStackTrace()
                 Result.failure(e)
             }
@@ -70,20 +69,20 @@ class XanoRepository {
         return RequestQueue.execute(
             operation = {
                 try {
-                    Log.d("XanoRepository", "🔐 Intentando login con correo: $correo")
+                    Log.d("XanoRepository", "Intentando login con correo: $correo")
 
                     // Llamar al endpoint de autenticación de Xano
-                    val response = usuarioApi.login(LoginRequest(correo, contrasena))
+                    val response = authApi.login(LoginRequest(correo, contrasena))
 
                     if (response.isSuccessful && response.body() != null) {
-                        Log.d("XanoRepository", "✅ Usuario encontrado: ${response.body()!!.nombreUsuario}")
+                        Log.d("XanoRepository", "Usuario encontrado: ${response.body()!!.nombreUsuario}")
                         Result.success(response.body()!!)
                     } else {
-                        Log.e("XanoRepository", "❌ Login falló: ${response.code()}")
+                        Log.e("XanoRepository", "Login falló: ${response.code()}")
                         Result.failure(Exception("Credenciales inválidas"))
                     }
                 } catch (e: Exception) {
-                    Log.e("XanoRepository", "❌ Error en login: ${e.message}")
+                    Log.e("XanoRepository", "Error en login: ${e.message}")
                     Result.failure(e)
                 }
             },

@@ -37,6 +37,13 @@ object RetrofitClient {
     // ========== APIs POR GRUPO ==========
 
     /**
+     * API de Autenticación (Login/Signup)
+     */
+    val authApi: XanoApi by lazy {
+        createRetrofit(ApiConfig.getAuthUrl()).create(XanoApi::class.java)
+    }
+
+    /**
      * API de Usuarios
      */
     val usuarioApi: XanoApi by lazy {

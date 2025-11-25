@@ -218,7 +218,22 @@ class AuthViewModel(
                         authResponse.usuario?.let { usuarioDto ->
                             Log.d("AuthViewModel", "   ID generado: ${usuarioDto.id}")
 
-                            // Guardar en la base de datos local
+                            // Guardar en la base de datos local CON EL MISMO ID de Xano
+                            try {
+                                Log.d("AuthViewModel", "Guardando usuario en BD local con ID: ${usuarioDto.id}")
+                                repository.insertarUsuarioConId(
+                                    id = usuarioDto.id,
+                                    nombreUsuario = usuarioDto.nombreUsuario,
+                                    correo = usuarioDto.correo,
+                                    contrasena = contrasena
+                                )
+                                Log.d("AuthViewModel", "Usuario guardado exitosamente en BD local")
+                            } catch (e: Exception) {
+                                Log.w("AuthViewModel", "Error guardando usuario localmente: ${e.message}")
+                                // Si falla (ya existe), intentar obtenerlo
+                            }
+
+                            // Crear la entidad local para el estado
                             val localUser = UsuarioEntity(
                                 id = usuarioDto.id,
                                 nombreUsuario = usuarioDto.nombreUsuario,
@@ -226,20 +241,10 @@ class AuthViewModel(
                                 contrasena = contrasena
                             )
 
-                            // Insertar en BD local
-                            try {
-                                repository.registrarUsuario(
-                                    localUser.nombreUsuario,
-                                    localUser.correo,
-                                    localUser.contrasena
-                                )
-                            } catch (_: Exception) {
-                                Log.w("AuthViewModel", "Usuario ya existe localmente")
-                            }
-
                             // Guardar sesión
                             try {
                                 sessionManager.saveCurrentUserId(usuarioDto.id)
+                                Log.d("AuthViewModel", "Sesión guardada para usuario ID: ${usuarioDto.id}")
                             } catch (_: Exception) { }
 
                             _uiState.update {

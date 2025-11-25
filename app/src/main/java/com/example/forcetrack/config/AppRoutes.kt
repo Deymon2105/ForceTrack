@@ -1,9 +1,5 @@
 package com.example.forcetrack.config
 
-/**
- * 🛡️ Configuración centralizada de rutas de navegación
- * Separado del MainActivity para mejor organización y mantenibilidad
- */
 object AppRoutes {
     const val LOGIN = "login"
     const val REGISTER = "register"

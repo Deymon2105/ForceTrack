@@ -77,7 +77,7 @@ object ApiConfig {
      */
     fun getConfigInfo(): String {
         val domain = XanoEndpoints.AUTH.substringAfter("https://").substringBefore("/")
-        return "Xano Backend: $domain (${if (isConfigured()) "✅ Configurado" else "❌ No configurado"})"
+        return "Xano Backend: $domain (${if (isConfigured()) " Configurado" else " No configurado"})"
     }
 }
 

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.forcetrack.database.entity.BloqueEntity
 import com.example.forcetrack.viewmodel.BloquesViewModel
+import com.example.forcetrack.ui.components.MotivationalCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,7 +111,7 @@ fun BloquesScreen(
                         CircularProgressIndicator()
                     }
                 }
-                uiState.bloques.isEmpty() && !uiState.isLoading -> {
+                uiState.bloques.isEmpty() -> {
                     EmptyState()
                 }
                 else -> {
@@ -118,6 +119,13 @@ fun BloquesScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // Card motivador - Frase del día
+                        item {
+                            MotivationalCard(
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+
                         items(items = uiState.bloques, key = { it.id }) { bloque ->
                             BloqueCard(
                                 bloque = bloque,
@@ -174,6 +182,7 @@ private fun EmptyState() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CreateBloqueDialog(onDismiss: () -> Unit, onConfirm: (String, Int, Int) -> Unit) {
     var nombre by remember { mutableStateOf("") }

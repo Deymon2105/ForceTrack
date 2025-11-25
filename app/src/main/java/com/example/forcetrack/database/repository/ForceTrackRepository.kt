@@ -35,6 +35,11 @@ class ForceTrackRepository(
         return usuarioDao.insertarUsuario(nuevoUsuario)
     }
 
+    suspend fun insertarUsuarioConId(id: Int, nombreUsuario: String, correo: String, contrasena: String): Long {
+        val usuario = UsuarioEntity(id = id, nombreUsuario = nombreUsuario, correo = correo, contrasena = contrasena)
+        return usuarioDao.insertarUsuario(usuario)
+    }
+
     suspend fun obtenerUsuarioPorId(usuarioId: Int): UsuarioEntity? {
         return usuarioDao.obtenerUsuarioPorId(usuarioId)
     }

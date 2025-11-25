@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.forcetrack.database.dao.*
 import com.example.forcetrack.database.entity.*
 
@@ -38,21 +39,11 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun trainingLogDao(): TrainingLogDao // nuevo DAO
     abstract fun ejercicioDisponibleDao(): EjercicioDisponibleDao // nuevo DAO
 
-    // El "companion object" nos permite acceder a los métodos para crear o obtener la base de datos
-    // sin necesidad de instanciar la clase AppDatabase.
     companion object {
-
-        // La anotación @Volatile asegura que el valor de INSTANCE siempre esté actualizado
-        // y sea el mismo para todos los hilos de ejecución. Es clave para evitar problemas
-        // de concurrencia al acceder a la base de datos desde diferentes partes de la app.
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        // Este método nos da la instancia única (singleton) de la base de datos.
-        // Si la instancia ya existe, la devuelve. Si no, la crea de forma segura.
         fun getDatabase(context: Context): AppDatabase {
-            // El `synchronized` bloquea el acceso a este bloque de código desde múltiples hilos
-            // a la vez, asegurando que solo un hilo pueda crear la instancia de la base de datos.
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
@@ -60,6 +51,14 @@ abstract class AppDatabase : RoomDatabase() {
                     "forcetrack_database" // El nombre del archivo de la base de datos en el dispositivo.
                 )
                 .fallbackToDestructiveMigration() // Evita errores de migración en desarrollo
+                // ✅ HABILITAR FOREIGN KEYS
+                .addCallback(object : RoomDatabase.Callback() {
+                    override fun onOpen(db: SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        // Habilitar foreign keys en cada conexión
+                        db.execSQL("PRAGMA foreign_keys=ON;")
+                    }
+                })
                 .build()
                 INSTANCE = instance
                 instance
