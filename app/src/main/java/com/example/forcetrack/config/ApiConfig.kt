@@ -1,18 +1,4 @@
 package com.example.forcetrack.config
-
-/**
- * 🔐 Configuración segura de endpoints de Xano
- *
- * IMPORTANTE: En producción, estas URLs deberían estar en:
- * 1. Variables de entorno
- * 2. Archivo local.properties (no versionado en Git)
- * 3. Sistema de gestión de secretos (como Google Cloud Secret Manager)
- *
- * Para mayor seguridad, considera:
- * - Añadir este archivo a .gitignore
- * - Usar BuildConfig para diferentes entornos (dev/prod)
- * - Implementar ofuscación de código con ProGuard/R8
- */
 object ApiConfig {
 
     /**

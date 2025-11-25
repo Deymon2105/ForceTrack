@@ -107,13 +107,13 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
 
                 _ejercicios.value = ejerciciosCompletos
                 _cargando.value = false
-                Log.d("RutinaViewModel", "✅ Día cargado completamente desde BD local")
+                Log.d("RutinaViewModel", " Día cargado completamente desde BD local")
 
                 // 2. SINCRONIZAR CON XANO EN SEGUNDO PLANO (no bloqueante)
                 sincronizarEjerciciosConXano(diaId)
 
             } catch (e: Exception) {
-                Log.e("RutinaViewModel", "❌ Error cargando día: ${e.message}")
+                Log.e("RutinaViewModel", " Error cargando día: ${e.message}")
                 e.printStackTrace()
                 _mensajeError.value = "Error cargando rutina: ${e.message}"
                 _cargando.value = false
@@ -125,7 +125,7 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
     private fun sincronizarEjerciciosConXano(diaId: Int) {
         viewModelScope.launch {
             try {
-                Log.d("RutinaViewModel", "🔄 Sincronizando con Xano en segundo plano...")
+                Log.d("RutinaViewModel", " Sincronizando con Xano en segundo plano...")
 
                 val xanoRepo = com.example.forcetrack.network.repository.XanoRepository()
                 xanoRepo.obtenerEjercicios(diaId)
@@ -134,10 +134,10 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                         // La sincronización es pasiva, no afecta la UI
                     }
                     .onFailure { error ->
-                        Log.w("RutinaViewModel", "⚠️ No se pudo sincronizar: ${error.message}")
+                        Log.w("RutinaViewModel", "⚠ No se pudo sincronizar: ${error.message}")
                     }
             } catch (e: Exception) {
-                Log.w("RutinaViewModel", "⚠️ Error en sincronización: ${e.message}")
+                Log.w("RutinaViewModel", " Error en sincronización: ${e.message}")
             }
         }
     }
@@ -336,7 +336,7 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                 // 5. Esperar 800ms y liberar el botón INMEDIATAMENTE
                 delay(800)
                 liberarOperacion(ejercicioId, "agregar_serie")
-                Log.d("RutinaViewModel", "✅ Botón desbloqueado - listo para agregar otra serie")
+                Log.d("RutinaViewModel", " Botón desbloqueado - listo para agregar otra serie")
 
                 // 6. Lanzar subida a Xano en coroutine separada (totalmente en segundo plano)
                 viewModelScope.launch {
@@ -472,7 +472,7 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                         rir = serie.rir,
                         completada = serie.completada
                     )
-                    Log.d("RutinaViewModel", "✅ Serie actualizada en BD local")
+                    Log.d("RutinaViewModel", " Serie actualizada en BD local")
                 } catch (dbEx: Exception) {
                     Log.e("RutinaViewModel", "Error actualizando en BD local: ${dbEx.message}")
                 }
@@ -488,10 +488,10 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                         completada = serie.completada
                     ))
                         .onSuccess {
-                            Log.d("RutinaViewModel", "✅ Serie sincronizada con servidor")
+                            Log.d("RutinaViewModel", " Serie sincronizada con servidor")
                         }
                         .onFailure { error ->
-                            Log.w("RutinaViewModel", "⚠️ Error sincronizando con servidor: ${error.message}")
+                            Log.w("RutinaViewModel", " Error sincronizando con servidor: ${error.message}")
                         }
                 }
 

@@ -7,12 +7,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import retrofit2.HttpException
 
-/**
- * Sistema de cola inteligente para peticiones a Xano
- * Evita error 429 (Too Many Requests) controlando el flujo de peticiones
- * VERSIÓN MEJORADA con reintentos automáticos y exponential backoff
- * Ahora usa configuración centralizada de ApiConfig
- */
 object RequestQueue {
     private const val TAG = "RequestQueue"
 

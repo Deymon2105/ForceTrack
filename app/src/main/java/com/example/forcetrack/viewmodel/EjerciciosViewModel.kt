@@ -15,7 +15,6 @@ class EjerciciosViewModel(private val repository: ForceTrackRepository) : ViewMo
     private val _ejercicios = MutableStateFlow<List<EjercicioDisponible>>(emptyList())
     val ejercicios: StateFlow<List<EjercicioDisponible>> = _ejercicios.asStateFlow()
 
-    // ⛔ ANTI-SPAM: Control de operaciones en proceso
     private val _operacionesEnProceso = MutableStateFlow<Set<String>>(emptySet())
 
     fun isOperacionEnProceso(operacion: String): Boolean {
