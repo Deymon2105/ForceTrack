@@ -27,5 +27,9 @@ data class BloqueEntity(
     // ID del usuario al que pertenece este bloque de entrenamiento.
     val usuarioId: Int,
     // Nombre del bloque, por ejemplo, "Volumen Fase 1" o "Definición 2024".
-    val nombre: String
+    val nombre: String,
+    // Categoría o disciplina del bloque (ej. "Powerlifting", "Hipertrofia", "Calistenia")
+    val categoria: String = "General",
+    // Indica si el bloque es público (visible para otros usuarios)
+    val esPublico: Boolean = false
 )

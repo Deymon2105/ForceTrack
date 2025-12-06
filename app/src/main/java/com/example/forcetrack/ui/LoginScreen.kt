@@ -1,5 +1,7 @@
 package com.example.forcetrack.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,11 +17,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.forcetrack.ui.theme.BackgroundDark
+import com.example.forcetrack.ui.theme.ButtonGreen
+import com.example.forcetrack.ui.theme.InputBackground
+import com.example.forcetrack.ui.theme.InputTextBlue
+import com.example.forcetrack.ui.theme.TextLight
 import com.example.forcetrack.utils.ValidationUtils
 import com.example.forcetrack.viewmodel.AuthViewModel
 import com.example.forcetrack.viewmodel.AuthState
@@ -35,6 +45,7 @@ fun LoginScreen(
     var showValidation by remember { mutableStateOf(false) }
 
     val authUiState by authViewModel.uiState.collectAsState()
+    val focusManager = LocalFocusManager.current
 
     // Limpia el error cuando el usuario empieza a escribir de nuevo
     LaunchedEffect(email, password) {
@@ -44,7 +55,14 @@ fun LoginScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundDark)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            },
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -55,21 +73,31 @@ fun LoginScreen(
             Text(
                 "ForceTrack",
                 style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = TextLight
             )
 
             // Campo de correo electrónico
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Correo Electrónico") },
+                label = { Text("Correo Electrónico", color = TextLight) },
                 isError = showValidation && email.isBlank(),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = InputTextBlue,
+                    unfocusedTextColor = TextLight,
+                    focusedContainerColor = InputBackground,
+                    unfocusedContainerColor = InputBackground,
+                    focusedBorderColor = ButtonGreen,
+                    unfocusedBorderColor = TextLight,
+                    cursorColor = ButtonGreen
+                ),
                 supportingText = {
                     if (showValidation && email.isBlank()) {
-                        Text("El correo electrónico no puede estar vacío")
+                        Text("El correo electrónico no puede estar vacío", color = MaterialTheme.colorScheme.error)
                     }
                 }
             )
@@ -78,23 +106,33 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Contraseña") },
+                label = { Text("Contraseña", color = TextLight) },
                 isError = showValidation && password.isBlank(),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = InputTextBlue,
+                    unfocusedTextColor = TextLight,
+                    focusedContainerColor = InputBackground,
+                    unfocusedContainerColor = InputBackground,
+                    focusedBorderColor = ButtonGreen,
+                    unfocusedBorderColor = TextLight,
+                    cursorColor = ButtonGreen
+                ),
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
                             imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                            tint = TextLight
                         )
                     }
                 },
                 supportingText = {
                     if (showValidation && password.isBlank()) {
-                        Text("La contraseña no puede estar vacía")
+                        Text("La contraseña no puede estar vacía", color = MaterialTheme.colorScheme.error)
                     }
                 }
             )
@@ -120,12 +158,18 @@ fun LoginScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authUiState.authState != AuthState.LOADING
+                enabled = authUiState.authState != AuthState.LOADING,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ButtonGreen,
+                    contentColor = Color.White,
+                    disabledContainerColor = ButtonGreen.copy(alpha = 0.5f),
+                    disabledContentColor = Color.White.copy(alpha = 0.5f)
+                )
             ) {
                 if (authUiState.authState == AuthState.LOADING) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = Color.White
                     )
                 } else {
                     Text("Iniciar Sesión")
@@ -133,7 +177,7 @@ fun LoginScreen(
             }
 
             TextButton(onClick = onRegisterClick) {
-                Text("¿No tienes cuenta? Regístrate")
+                Text("¿No tienes cuenta? Regístrate", color = ButtonGreen)
             }
         }
     }

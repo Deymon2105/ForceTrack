@@ -9,22 +9,16 @@ data class BloqueEntrenamiento(
     val id: Int = 0,
     val nombre: String,
     val usuarioId: Int,
-    val semanas: MutableList<SemanaEntrenamiento> = mutableListOf()
-)
-
-// Semana de entrenamiento usada en la UI
-data class SemanaEntrenamiento(
-    val id: Int = 0,
-    val bloqueId: Int,
-    val numero: Int,
     val dias: MutableList<DiaRutina> = mutableListOf()
 )
 
 // Día de rutina usado en la UI
 data class DiaRutina(
     val id: Int = 0,
-    val semanaId: Int,
+    val bloqueId: Int,
     val nombre: String,
     val ejercicios: MutableList<EjercicioRutina> = mutableListOf(),
-    var notas: String = ""
+    var notas: String = "",
+    val fecha: Long = System.currentTimeMillis(),
+    val numeroSemana: Int = 1
 )

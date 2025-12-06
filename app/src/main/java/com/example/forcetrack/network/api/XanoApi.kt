@@ -5,8 +5,8 @@ import retrofit2.Response
 import retrofit2.http.*
 
 /**
- * Interfaz de API REST para Xano
- * Compatible con los endpoints CRUD estándar de Xano
+ * Interfaz de API REST para el Backend (Spring Boot)
+ * Compatible con los endpoints CRUD estándar
  */
 interface XanoApi {
 
@@ -49,7 +49,7 @@ interface XanoApi {
     @GET("bloque/{bloque_id}")
     suspend fun getBloque(@Path("bloque_id") bloqueId: Int): Response<BloqueDto>
 
-    @PATCH("bloque/{bloque_id}")
+    @PUT("bloque/{bloque_id}")
     suspend fun updateBloque(
         @Path("bloque_id") bloqueId: Int,
         @Body request: UpdateBloqueRequest
@@ -57,26 +57,19 @@ interface XanoApi {
 
     @DELETE("bloque/{bloque_id}")
     suspend fun deleteBloque(@Path("bloque_id") bloqueId: Int): Response<Unit>
-
-    // ========== SEMANAS ==========
-
-    @GET("semana")
-    suspend fun getAllSemanas(): Response<List<SemanaDto>>
-
-    @POST("semana")
-    suspend fun createSemana(@Body request: CreateSemanaRequest): Response<SemanaDto>
-
-    @GET("semana/{semana_id}")
-    suspend fun getSemana(@Path("semana_id") semanaId: Int): Response<SemanaDto>
-
-    @PATCH("semana/{semana_id}")
-    suspend fun updateSemana(
-        @Path("semana_id") semanaId: Int,
-        @Body request: UpdateSemanaRequest
-    ): Response<SemanaDto>
-
-    @DELETE("semana/{semana_id}")
-    suspend fun deleteSemana(@Path("semana_id") semanaId: Int): Response<Unit>
+    
+    // Obtener bloques públicos
+    @GET("bloque/publicos")
+    suspend fun getBloquesPublicos(
+        @Query("categoria") categoria: String? = null
+    ): Response<List<BloquePublicoDto>>
+    
+    // Cambiar visibilidad de un bloque
+    @PATCH("bloque/{bloque_id}/visibilidad")
+    suspend fun cambiarVisibilidadBloque(
+        @Path("bloque_id") bloqueId: Int,
+        @Query("esPublico") esPublico: Boolean
+    ): Response<BloqueDto>
 
     // ========== DÍAS ==========
 
@@ -162,28 +155,20 @@ data class LoginRequest(
 // Bloque Requests
 data class CreateBloqueRequest(
     @SerializedName("usuario_id") val usuarioId: Int,
-    @SerializedName("nombre") val nombre: String
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("categoria") val categoria: String = "General",
+    @SerializedName("es_publico") val esPublico: Boolean = false
 )
 
 data class UpdateBloqueRequest(
     @SerializedName("nombre") val nombre: String? = null,
-    @SerializedName("usuario_id") val usuarioId: Int? = null
-)
-
-// Semana Requests
-data class CreateSemanaRequest(
-    @SerializedName("bloque_id") val bloqueId: Int,
-    @SerializedName("numero_semana") val numeroSemana: Int
-)
-
-data class UpdateSemanaRequest(
-    @SerializedName("numero_semana") val numeroSemana: Int? = null,
-    @SerializedName("bloque_id") val bloqueId: Int? = null
+    @SerializedName("categoria") val categoria: String? = null,
+    @SerializedName("es_publico") val esPublico: Boolean? = null
 )
 
 // Dia Requests
 data class CreateDiaRequest(
-    @SerializedName("semana_id") val semanaId: Int,
+    @SerializedName("bloque_id") val bloqueId: Int,
     @SerializedName("nombre") val nombre: String,
     @SerializedName("notas") val notas: String? = null
 )
@@ -191,7 +176,7 @@ data class CreateDiaRequest(
 data class UpdateDiaRequest(
     @SerializedName("nombre") val nombre: String? = null,
     @SerializedName("notas") val notas: String? = null,
-    @SerializedName("semana_id") val semanaId: Int? = null
+    @SerializedName("bloque_id") val bloqueId: Int? = null
 )
 
 // Ejercicio Requests
@@ -237,19 +222,24 @@ data class BloqueDto(
     @SerializedName("id") val id: Int,
     @SerializedName("usuario_id") val usuarioId: Int,
     @SerializedName("nombre") val nombre: String,
+    @SerializedName("categoria") val categoria: String? = null,
+    @SerializedName("es_publico") val esPublico: Boolean? = null,
     @SerializedName("created_at") val created_at: String? = null
 )
 
-data class SemanaDto(
+data class BloquePublicoDto(
     @SerializedName("id") val id: Int,
-    @SerializedName("bloque_id") val bloqueId: Int,
-    @SerializedName("numero_semana") val numeroSemana: Int,
-    @SerializedName("created_at") val created_at: String? = null
+    @SerializedName("usuarioId") val usuarioId: Int,
+    @SerializedName("nombreUsuario") val nombreUsuario: String,
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("categoria") val categoria: String,
+    @SerializedName("esPublico") val esPublico: Boolean,
+    @SerializedName("cantidadDias") val cantidadDias: Int
 )
 
 data class DiaDto(
     @SerializedName("id") val id: Int,
-    @SerializedName("semana_id") val semanaId: Int,
+    @SerializedName("bloque_id") val bloqueId: Int,
     @SerializedName("nombre") val nombre: String,
     @SerializedName("notas") val notas: String? = null,
     @SerializedName("created_at") val created_at: String? = null

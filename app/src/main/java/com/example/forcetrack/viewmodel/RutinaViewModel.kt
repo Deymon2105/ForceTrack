@@ -72,10 +72,12 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                 // Actualizar info del día inmediatamente
                 _diaActual.value = DiaRutina(
                     id = diaEntity.id,
-                    semanaId = diaEntity.semanaId,
+                    bloqueId = diaEntity.bloqueId,
                     nombre = diaEntity.nombre,
                     notas = diaEntity.notas,
-                    ejercicios = mutableListOf()
+                    ejercicios = mutableListOf(),
+                    fecha = diaEntity.fecha,
+                    numeroSemana = diaEntity.numeroSemana
                 )
 
                 // Cargar ejercicios con series (usando first() en vez de collect para evitar bucles)

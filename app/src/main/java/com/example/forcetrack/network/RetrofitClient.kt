@@ -58,13 +58,6 @@ object RetrofitClient {
     }
 
     /**
-     * API de Semanas
-     */
-    val semanaApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getSemanaUrl()).create(XanoApi::class.java)
-    }
-
-    /**
      * API de Días
      */
     val diaApi: XanoApi by lazy {

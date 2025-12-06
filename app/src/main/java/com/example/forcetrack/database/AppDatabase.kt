@@ -16,14 +16,13 @@ import com.example.forcetrack.database.entity.*
     entities = [
         UsuarioEntity::class,
         BloqueEntity::class,
-        SemanaEntity::class,
         DiaEntity::class,
         EjercicioEntity::class,
         SerieEntity::class,
         TrainingLogEntity::class, // nueva entidad de logs diarios
         EjercicioDisponibleEntity::class // nueva entidad de ejercicios disponibles
     ],
-    version = 4, // Incrementada la versión por la nueva entidad e índice único
+    version = 7, // Incrementada la versión por el nuevo campo esPublico en BloqueEntity
     exportSchema = false // No exportar el esquema de la BD a un archivo. Para este proyecto no es necesario.
 )
 @TypeConverters(Conversores::class)
@@ -32,7 +31,6 @@ abstract class AppDatabase : RoomDatabase() {
     // Métodos abstractos para que Room nos proporcione una instancia de cada DAO.
     abstract fun usuarioDao(): UsuarioDao
     abstract fun bloqueDao(): BloqueDao
-    abstract fun semanaDao(): SemanaDao
     abstract fun diaDao(): DiaDao
     abstract fun ejercicioDao(): EjercicioDao
     abstract fun serieDao(): SerieDao

@@ -3,7 +3,6 @@ package com.example.forcetrack.network.repository
 import com.example.forcetrack.network.dto.*
 import com.example.forcetrack.network.api.UsuarioDto as XanoUsuarioDto
 import com.example.forcetrack.network.api.BloqueDto as XanoBloqueDto
-import com.example.forcetrack.network.api.SemanaDto as XanoSemanaDto
 import com.example.forcetrack.network.api.DiaDto as XanoDiaDto
 import com.example.forcetrack.network.api.EjercicioDto as XanoEjercicioDto
 import com.example.forcetrack.network.api.SerieDto as XanoSerieDto
@@ -110,7 +109,7 @@ class RemoteRepository {
                                 id = xanoBloque.id,
                                 usuarioId = xanoBloque.usuarioId,
                                 nombre = xanoBloque.nombre,
-                                semanas = emptyList()
+                                dias = emptyList()
                             )
                         }
                         return@withContext Result.success(bloques)
@@ -130,22 +129,23 @@ class RemoteRepository {
             try {
                 // Obtener bloques y filtrar el que necesitamos
                 val bloquesResult = xanoRepo.obtenerBloques(0) // Obtener todos
-                val semanasResult = xanoRepo.obtenerSemanas(bloqueId)
+                val diasResult = xanoRepo.obtenerDias(bloqueId)
 
                 bloquesResult.onSuccess { bloques ->
                     val bloque = bloques.firstOrNull { it.id == bloqueId }
                     if (bloque != null) {
-                        semanasResult.onSuccess { xanoSemanas ->
+                        diasResult.onSuccess { xanoDias ->
                             val bloqueDto = BloqueDto(
                                 id = bloque.id,
                                 usuarioId = bloque.usuarioId,
                                 nombre = bloque.nombre,
-                                semanas = xanoSemanas.map { xanoSemana ->
-                                    SemanaDto(
-                                        id = xanoSemana.id,
-                                        bloqueId = xanoSemana.bloqueId,
-                                        numeroSemana = xanoSemana.numeroSemana,
-                                        dias = emptyList()
+                                dias = xanoDias.map { xanoDia ->
+                                    DiaDto(
+                                        id = xanoDia.id,
+                                        bloqueId = xanoDia.bloqueId,
+                                        nombre = xanoDia.nombre,
+                                        notas = xanoDia.notas,
+                                        ejercicios = emptyList()
                                     )
                                 }
                             )
@@ -169,7 +169,7 @@ class RemoteRepository {
                             id = xanoBloque.id,
                             usuarioId = xanoBloque.usuarioId,
                             nombre = xanoBloque.nombre,
-                            semanas = emptyList()
+                            dias = emptyList()
                         )
                         return@withContext Result.success(bloqueDto)
                     }
@@ -187,41 +187,16 @@ class RemoteRepository {
         return xanoRepo.eliminarBloque(bloqueId)
     }
 
-    // ========== SEMANAS ==========
-
-    suspend fun createSemana(semana: SemanaDto): Result<SemanaDto> {
-        return withContext(Dispatchers.IO) {
-            try {
-                xanoRepo.crearSemana(semana.bloqueId, semana.numeroSemana)
-                    .onSuccess { xanoSemana ->
-                        val semanaDto = SemanaDto(
-                            id = xanoSemana.id,
-                            bloqueId = xanoSemana.bloqueId,
-                            numeroSemana = xanoSemana.numeroSemana,
-                            dias = emptyList()
-                        )
-                        return@withContext Result.success(semanaDto)
-                    }
-                    .onFailure { error ->
-                        return@withContext Result.failure(error)
-                    }
-                Result.failure(Exception("Error desconocido"))
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-    }
-
     // ========== DÍAS ==========
 
     suspend fun createDia(dia: DiaDto): Result<DiaDto> {
         return withContext(Dispatchers.IO) {
             try {
-                xanoRepo.crearDia(dia.semanaId, dia.nombre, dia.notas)
+                xanoRepo.crearDia(dia.bloqueId, dia.nombre, dia.notas)
                     .onSuccess { xanoDia ->
                         val diaDto = DiaDto(
                             id = xanoDia.id,
-                            semanaId = xanoDia.semanaId,
+                            bloqueId = xanoDia.bloqueId,
                             nombre = xanoDia.nombre,
                             notas = xanoDia.notas,
                             ejercicios = emptyList()

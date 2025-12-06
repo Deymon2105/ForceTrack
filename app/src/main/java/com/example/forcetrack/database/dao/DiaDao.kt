@@ -18,10 +18,9 @@ interface DiaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertarDia(dia: DiaEntity): Long
 
-    // Obtiene todos los días de una semana específica, ordenados por su ID.
-    // Usa Flow para que la UI se actualice automáticamente si los datos cambian.
-    @Query("SELECT * FROM dias WHERE semanaId = :semanaId ORDER BY id ASC")
-    fun obtenerDiasPorSemana(semanaId: Int): Flow<List<DiaEntity>>
+    // Obtiene todos los días de un bloque específico, ordenados por fecha e ID.
+    @Query("SELECT * FROM dias WHERE bloqueId = :bloqueId ORDER BY fecha ASC, id ASC")
+    fun obtenerDiasPorBloque(bloqueId: Int): Flow<List<DiaEntity>>
 
     // Obtiene un día específico por su ID.
     @Query("SELECT * FROM dias WHERE id = :diaId")
@@ -31,7 +30,7 @@ interface DiaDao {
     @Update
     suspend fun actualizarDia(dia: DiaEntity)
 
-    // Elimina un día de la base de datos usando su ID.
+    // Elimina un día por su ID.
     @Query("DELETE FROM dias WHERE id = :diaId")
     suspend fun eliminarDia(diaId: Int)
 }

@@ -28,6 +28,8 @@ object AppRoutes {
     const val DAILY_ARG_DATE = "dateIso"
     const val DAILY = "$DAILY_ROUTE/{$DAILY_ARG_USER}/{$DAILY_ARG_DATE}"
 
+    const val NEW_SCREEN = "new_screen"
+
     /**
      * Construye una ruta con parámetros de forma segura
      */

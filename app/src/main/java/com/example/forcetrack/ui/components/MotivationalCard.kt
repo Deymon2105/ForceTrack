@@ -4,10 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.SportsGymnastics
-import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.filled.SportsGymnastics
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,7 +65,7 @@ object FitnessColors {
         startColor = Color(0xFF11998E),
         middleColor = Color(0xFF38EF7D),
         endColor = Color(0xFF56CCF2),
-        icon = Icons.Default.DirectionsRun
+        icon = Icons.AutoMirrored.Filled.DirectionsRun
     )
 
     val FocusBlue = FitnessColorScheme(
@@ -86,7 +86,7 @@ object FitnessColors {
         startColor = Color(0xFF00C9FF),
         middleColor = Color(0xFF92FE9D),
         endColor = Color(0xFF00F2FE),
-        icon = Icons.Default.DirectionsRun
+        icon = Icons.AutoMirrored.Filled.DirectionsRun
     )
 
     val PassionMagenta = FitnessColorScheme(

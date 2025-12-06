@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.Flow
 class ForceTrackRepository(
     private val usuarioDao: UsuarioDao,
     private val bloqueDao: BloqueDao,
-    private val semanaDao: SemanaDao,
     private val diaDao: DiaDao,
     private val ejercicioDao: EjercicioDao,
     private val serieDao: SerieDao,
@@ -53,8 +52,8 @@ class ForceTrackRepository(
         return bloqueDao.obtenerBloquePorId(bloqueId)
     }
 
-    suspend fun crearBloque(nombre: String, usuarioId: Int): Long {
-        val nuevoBloque = BloqueEntity(nombre = nombre, usuarioId = usuarioId)
+    suspend fun crearBloque(nombre: String, usuarioId: Int, categoria: String = "General"): Long {
+        val nuevoBloque = BloqueEntity(nombre = nombre, usuarioId = usuarioId, categoria = categoria)
         return bloqueDao.insertarBloque(nuevoBloque)
     }
 
@@ -62,28 +61,22 @@ class ForceTrackRepository(
         bloqueDao.eliminarBloque(bloqueId)
     }
 
-    // --- Operaciones con Semanas ---
-    fun obtenerSemanas(bloqueId: Int): Flow<List<SemanaEntity>> {
-        return semanaDao.obtenerSemanasPorBloque(bloqueId)
-    }
-
-    suspend fun crearSemana(bloqueId: Int, numeroSemana: Int): Long {
-        val nuevaSemana = SemanaEntity(bloqueId = bloqueId, numeroSemana = numeroSemana)
-        return semanaDao.insertarSemana(nuevaSemana)
-    }
-
     // --- Operaciones con Días ---
-    fun obtenerDias(semanaId: Int): Flow<List<DiaEntity>> {
-        return diaDao.obtenerDiasPorSemana(semanaId)
+    fun obtenerDias(bloqueId: Int): Flow<List<DiaEntity>> {
+        return diaDao.obtenerDiasPorBloque(bloqueId)
     }
 
     suspend fun obtenerDiaPorId(diaId: Int): DiaEntity? {
         return diaDao.obtenerDiaPorId(diaId)
     }
 
-    suspend fun crearDia(semanaId: Int, nombreDia: String): Long {
-        val nuevoDia = DiaEntity(semanaId = semanaId, nombre = nombreDia)
+    suspend fun crearDia(bloqueId: Int, nombreDia: String, numeroSemana: Int = 1): Long {
+        val nuevoDia = DiaEntity(bloqueId = bloqueId, nombre = nombreDia, numeroSemana = numeroSemana)
         return diaDao.insertarDia(nuevoDia)
+    }
+
+    suspend fun eliminarDia(diaId: Int) {
+        diaDao.eliminarDia(diaId)
     }
 
     suspend fun actualizarNotasDia(diaId: Int, notas: String) {

@@ -15,22 +15,11 @@ data class BloqueDto(
     @SerializedName("nombre")
     val nombre: String,
 
-    @SerializedName("semanas")
-    val semanas: List<SemanaDto>? = null
-)
+    @SerializedName("categoria")
+    val categoria: String = "General",
 
-/**
- * DTO para Semana de Entrenamiento
- */
-data class SemanaDto(
-    @SerializedName("id")
-    val id: Int = 0,
-
-    @SerializedName("bloqueId")
-    val bloqueId: Int,
-
-    @SerializedName("numeroSemana")
-    val numeroSemana: Int,
+    @SerializedName("esPublico")
+    val esPublico: Boolean = false,
 
     @SerializedName("dias")
     val dias: List<DiaDto>? = null
@@ -43,14 +32,20 @@ data class DiaDto(
     @SerializedName("id")
     val id: Int = 0,
 
-    @SerializedName("semanaId")
-    val semanaId: Int,
+    @SerializedName("bloqueId")
+    val bloqueId: Int,
 
     @SerializedName("nombre")
     val nombre: String,
 
     @SerializedName("notas")
     val notas: String? = null,
+
+    @SerializedName("fecha")
+    val fecha: String? = null,
+
+    @SerializedName("numeroSemana")
+    val numeroSemana: Int = 1,
 
     @SerializedName("ejercicios")
     val ejercicios: List<EjercicioDto>? = null
@@ -111,6 +106,32 @@ data class ApiResponse<T>(
 
     @SerializedName("data")
     val data: T? = null
+)
+
+/**
+ * DTO para Bloque Público con información adicional
+ */
+data class BloquePublicoDto(
+    @SerializedName("id")
+    val id: Int = 0,
+
+    @SerializedName("usuarioId")
+    val usuarioId: Int,
+
+    @SerializedName("nombreUsuario")
+    val nombreUsuario: String,
+
+    @SerializedName("nombre")
+    val nombre: String,
+
+    @SerializedName("categoria")
+    val categoria: String,
+
+    @SerializedName("esPublico")
+    val esPublico: Boolean,
+
+    @SerializedName("cantidadDias")
+    val cantidadDias: Int
 )
 
 /**

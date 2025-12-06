@@ -103,7 +103,8 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
                 bloquesViewModel = bloquesViewModel,
                 onBloqueSelected = { bloqueId -> navController.navigate(AppRoutes.splitWithBloqueId(bloqueId)) },
                 onLogout = { authViewModel.logout() },
-                onOpenCalendar = { navController.navigate(AppRoutes.calendarWithUserId(usuarioId)) }
+                onOpenCalendar = { navController.navigate(AppRoutes.calendarWithUserId(usuarioId)) },
+                onOpenNewScreen = { navController.navigate(AppRoutes.NEW_SCREEN) }
             )
         }
 
@@ -203,6 +204,13 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
                 dateIso = dateIso,
                 trainingLogViewModel = trainingLogViewModel,
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Nueva pantalla
+        composable(AppRoutes.NEW_SCREEN) {
+            NewScreen(
+                onBackPressed = { navController.popBackStack() }
             )
         }
     }

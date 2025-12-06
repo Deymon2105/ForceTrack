@@ -10,7 +10,6 @@ class XanoRepository {
     private val authApi = RetrofitClient.authApi
     private val usuarioApi = RetrofitClient.usuarioApi
     private val bloqueApi = RetrofitClient.bloqueApi
-    private val semanaApi = RetrofitClient.semanaApi
     private val diaApi = RetrofitClient.diaApi
     private val ejercicioApi = RetrofitClient.ejercicioApi
     private val serieApi = RetrofitClient.serieApi
@@ -156,65 +155,19 @@ class XanoRepository {
         })
     }
 
-    // ========== SEMANAS ==========
-
-    /**
-     * Obtener semanas de un bloque
-     */
-    suspend fun obtenerSemanas(bloqueId: Int): Result<List<SemanaDto>> {
-        return RequestQueue.execute(
-            operation = {
-                try {
-                    val response = semanaApi.getAllSemanas()
-
-                    if (response.isSuccessful && response.body() != null) {
-                        val semanas = response.body()!!.filter { it.bloqueId == bloqueId }
-                        Result.success(semanas)
-                    } else {
-                        Result.failure(Exception("Error obteniendo semanas: ${response.code()}"))
-                    }
-                } catch (e: Exception) {
-                    Result.failure(e)
-                }
-            },
-            priority = RequestQueue.Priority.LOW
-        )
-    }
-
-    /**
-     * Crear una nueva semana
-     */
-    suspend fun crearSemana(bloqueId: Int, numeroSemana: Int): Result<SemanaDto> {
-        return RequestQueue.execute(operation = {
-            try {
-                val response = semanaApi.createSemana(
-                    CreateSemanaRequest(bloqueId, numeroSemana)
-                )
-
-                if (response.isSuccessful && response.body() != null) {
-                    Result.success(response.body()!!)
-                } else {
-                    Result.failure(Exception("Error creando semana: ${response.code()}"))
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        })
-    }
-
     // ========== DÍAS ==========
 
     /**
-     * Obtener días de una semana
+     * Obtener días de un bloque
      */
-    suspend fun obtenerDias(semanaId: Int): Result<List<DiaDto>> {
+    suspend fun obtenerDias(bloqueId: Int): Result<List<DiaDto>> {
         return RequestQueue.execute(
             operation = {
                 try {
                     val response = diaApi.getAllDias()
 
                     if (response.isSuccessful && response.body() != null) {
-                        val dias = response.body()!!.filter { it.semanaId == semanaId }
+                        val dias = response.body()!!.filter { it.bloqueId == bloqueId }
                         Result.success(dias)
                     } else {
                         Result.failure(Exception("Error obteniendo días: ${response.code()}"))
@@ -230,11 +183,11 @@ class XanoRepository {
     /**
      * Crear un nuevo día
      */
-    suspend fun crearDia(semanaId: Int, nombre: String, notas: String? = null): Result<DiaDto> {
+    suspend fun crearDia(bloqueId: Int, nombre: String, notas: String? = null): Result<DiaDto> {
         return RequestQueue.execute(operation = {
             try {
                 val response = diaApi.createDia(
-                    CreateDiaRequest(semanaId, nombre, notas)
+                    CreateDiaRequest(bloqueId, nombre, notas)
                 )
 
                 if (response.isSuccessful && response.body() != null) {

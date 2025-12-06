@@ -27,7 +27,6 @@ class ForceTrackApplication : Application() {
         ForceTrackRepository(
             database.usuarioDao(),
             database.bloqueDao(),
-            database.semanaDao(),
             database.diaDao(),
             database.ejercicioDao(),
             database.serieDao(),

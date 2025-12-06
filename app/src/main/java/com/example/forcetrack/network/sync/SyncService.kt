@@ -8,7 +8,6 @@ import com.example.forcetrack.network.repository.XanoRepository
 data class SyncStats(
     val bloquesDescargados: Int = 0,
     val bloquesSubidos: Int = 0,
-    val semanasDescargadas: Int = 0,
     val diasDescargados: Int = 0,
     val ejerciciosDescargados: Int = 0,
     val seriesDescargadas: Int = 0,
@@ -47,42 +46,29 @@ class SyncService(private val xanoRepository: XanoRepository = XanoRepository())
                 .onSuccess { bloques ->
                     stats = stats.copy(bloquesDescargados = bloques.size)
 
-                    // 2. Para cada bloque, obtener semanas
+                    // 2. Para cada bloque, obtener días
                     bloques.forEach { bloque ->
-                        xanoRepository.obtenerSemanas(bloque.id)
-                            .onSuccess { semanas ->
+                        xanoRepository.obtenerDias(bloque.id)
+                            .onSuccess { dias ->
                                 stats = stats.copy(
-                                    semanasDescargadas = stats.semanasDescargadas + semanas.size
+                                    diasDescargados = stats.diasDescargados + dias.size
                                 )
 
-                                // 3. Para cada semana, obtener días
-                                semanas.forEach { semana ->
-                                    xanoRepository.obtenerDias(semana.id)
-                                        .onSuccess { dias ->
+                                // 3. Para cada día, obtener ejercicios
+                                dias.forEach { dia ->
+                                    xanoRepository.obtenerEjercicios(dia.id)
+                                        .onSuccess { ejercicios ->
                                             stats = stats.copy(
-                                                diasDescargados = stats.diasDescargados + dias.size
+                                                ejerciciosDescargados = stats.ejerciciosDescargados + ejercicios.size
                                             )
 
-                                            // 4. Para cada día, obtener ejercicios
-                                            dias.forEach { dia ->
-                                                xanoRepository.obtenerEjercicios(dia.id)
-                                                    .onSuccess { ejercicios ->
+                                            // 4. Para cada ejercicio, obtener series
+                                            ejercicios.forEach { ejercicio ->
+                                                xanoRepository.obtenerSeries(ejercicio.id)
+                                                    .onSuccess { series ->
                                                         stats = stats.copy(
-                                                            ejerciciosDescargados = stats.ejerciciosDescargados + ejercicios.size
+                                                            seriesDescargadas = stats.seriesDescargadas + series.size
                                                         )
-
-                                                        // 5. Para cada ejercicio, obtener series
-                                                        ejercicios.forEach { ejercicio ->
-                                                            xanoRepository.obtenerSeries(ejercicio.id)
-                                                                .onSuccess { series ->
-                                                                    stats = stats.copy(
-                                                                        seriesDescargadas = stats.seriesDescargadas + series.size
-                                                                    )
-                                                                }
-                                                                .onFailure {
-                                                                    stats = stats.copy(errores = stats.errores + 1)
-                                                                }
-                                                        }
                                                     }
                                                     .onFailure {
                                                         stats = stats.copy(errores = stats.errores + 1)

@@ -11,10 +11,10 @@ object RequestQueue {
     private const val TAG = "RequestQueue"
 
     // Configuración del rate limiting desde ApiConfig
-    private val MIN_DELAY_BETWEEN_REQUESTS = ApiConfig.RateLimiting.MIN_DELAY_BETWEEN_REQUESTS_MS
-    private val MAX_REQUESTS_PER_SECOND = ApiConfig.RateLimiting.MAX_REQUESTS_PER_SECOND
-    private val BACKOFF_ON_429 = ApiConfig.RateLimiting.BACKOFF_ON_429_MS
-    private val MAX_RETRIES = ApiConfig.RateLimiting.MAX_RETRIES
+    private val MIN_DELAY_BETWEEN_REQUESTS = 800L
+    private val MAX_REQUESTS_PER_SECOND = 2
+    private val BACKOFF_ON_429 = 3000L
+    private val MAX_RETRIES = 3
 
     private val mutex = Mutex()
     private var lastRequestTime = 0L

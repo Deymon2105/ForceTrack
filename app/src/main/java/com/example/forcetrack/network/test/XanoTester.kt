@@ -127,7 +127,7 @@ object XanoTester {
                     Log.d(TAG, "   ID: ${bloque.id}")
                     
                     // Test: Crear semana para este bloque
-                    testCrearSemana(bloque.id)
+                    // testCrearSemana(bloque.id)
                 }
                 .onFailure { error ->
                     Log.e(TAG, "Crear bloque FALLÓ: ${error.message}")
@@ -138,6 +138,7 @@ object XanoTester {
     /**
      * Test 4: Crear Semana
      */
+    /*
     private fun testCrearSemana(bloqueId: Int) {
         CoroutineScope(Dispatchers.Main).launch {
             Log.d(TAG, "\n--- TEST CREAR SEMANA ---")
@@ -157,10 +158,12 @@ object XanoTester {
                 }
         }
     }
+    */
 
     /**
      * Test 5: Crear Día
      */
+    /*
     private fun testCrearDia(semanaId: Int) {
         CoroutineScope(Dispatchers.Main).launch {
             Log.d(TAG, "\n--- TEST CREAR DÍA ---")
@@ -180,6 +183,7 @@ object XanoTester {
                 }
         }
     }
+    */
 
     /**
      * Test 6: Crear Ejercicio
