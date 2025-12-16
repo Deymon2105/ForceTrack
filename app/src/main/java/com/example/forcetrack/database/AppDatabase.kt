@@ -22,7 +22,7 @@ import com.example.forcetrack.database.entity.*
         TrainingLogEntity::class, // nueva entidad de logs diarios
         EjercicioDisponibleEntity::class // nueva entidad de ejercicios disponibles
     ],
-    version = 7, // Incrementada la versión por el nuevo campo esPublico en BloqueEntity
+    version = 8, // Incrementada la versión por los nuevos campos completado y fechaCompletado en DiaEntity
     exportSchema = false // No exportar el esquema de la BD a un archivo. Para este proyecto no es necesario.
 )
 @TypeConverters(Conversores::class)

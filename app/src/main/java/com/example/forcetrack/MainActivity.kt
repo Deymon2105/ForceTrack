@@ -17,7 +17,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.forcetrack.config.AppRoutes
-import com.example.forcetrack.network.test.XanoTester
 import com.example.forcetrack.ui.*
 import com.example.forcetrack.ui.theme.ForcetrackTheme
 import com.example.forcetrack.viewmodel.*
@@ -33,11 +32,7 @@ class MainActivity : ComponentActivity() {
         val syncService = app.syncService
         val viewModelFactory = ViewModelFactory(repository, sessionManager, syncService)
 
-        // 🧪 PRUEBA XANO - Descomenta para probar la conexión
-        XanoTester.testRapido() // Test rápido de login
-        // XanoTester.testSoloLectura(usuarioId = 1) // Test de lectura
-        // XanoTester.testearTodo(usuarioId = 1) // Test completo
-        Log.d("MainActivity", "Xano configurado y listo para usar")
+        Log.d("MainActivity", "Backend configurado y listo para usar")
 
         setContent {
             ForcetrackTheme {
@@ -104,7 +99,7 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
                 onBloqueSelected = { bloqueId -> navController.navigate(AppRoutes.splitWithBloqueId(bloqueId)) },
                 onLogout = { authViewModel.logout() },
                 onOpenCalendar = { navController.navigate(AppRoutes.calendarWithUserId(usuarioId)) },
-                onOpenNewScreen = { navController.navigate(AppRoutes.NEW_SCREEN) }
+                onOpenBloquesPublicos = { navController.navigate(AppRoutes.BLOQUES_PUBLICOS) }
             )
         }
 
@@ -207,10 +202,24 @@ fun AppNavigation(viewModelFactory: ViewModelFactory) {
             )
         }
 
-        // Nueva pantalla
-        composable(AppRoutes.NEW_SCREEN) {
-            NewScreen(
-                onBackPressed = { navController.popBackStack() }
+        // Pantalla de Bloques Públicos (Comunidad)
+        composable(AppRoutes.BLOQUES_PUBLICOS) {
+            val bloquesPublicosViewModel: BloquesPublicosViewModel = viewModel(factory = viewModelFactory)
+            BloquesPublicosScreen(
+                navController = navController,
+                viewModel = bloquesPublicosViewModel
+            )
+        }
+
+        // Pantalla de detalle de bloque público (solo lectura)
+        composable(
+            route = AppRoutes.BLOQUE_PUBLICO_DETALLE,
+            arguments = listOf(navArgument(AppRoutes.BLOQUE_PUBLICO_DETALLE_ARG) { type = NavType.IntType })
+        ) { backStackEntry ->
+            val bloqueId = backStackEntry.arguments?.getInt(AppRoutes.BLOQUE_PUBLICO_DETALLE_ARG) ?: 0
+            BloquePublicoDetalleScreen(
+                navController = navController,
+                bloqueId = bloqueId
             )
         }
     }

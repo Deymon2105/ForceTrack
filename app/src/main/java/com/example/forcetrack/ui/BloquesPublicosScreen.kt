@@ -1,6 +1,5 @@
 package com.example.forcetrack.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,7 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.forcetrack.network.api.BloquePublicoDto
+import com.example.forcetrack.config.AppRoutes
+import com.example.forcetrack.network.dto.BloquePublicoDto
 import com.example.forcetrack.viewmodel.BloquesPublicosViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,13 +35,32 @@ fun BloquesPublicosScreen(
 
     val categorias = listOf("Todos", "Hipertrofia", "Fuerza", "Powerlifting", "Calistenia", "CrossFit", "General")
 
+    // Refrescar la lista cada vez que se entra a la pantalla
+    LaunchedEffect(Unit) {
+        viewModel.cargarBloquesPublicos(categoriaSeleccionada)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Comunidad - Rutinas Públicas") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Volver")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.cargarBloquesPublicos(categoriaSeleccionada) },
+                        enabled = !isLoading
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Actualizar"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -83,7 +103,7 @@ fun BloquesPublicosScreen(
                 }
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Contenido
             when {
@@ -156,8 +176,7 @@ fun BloquesPublicosScreen(
                             BloquePublicoCard(
                                 bloque = bloque,
                                 onClick = {
-                                    // Navegar a la vista de detalle del bloque
-                                    navController.navigate("bloque_publico_detalle/${bloque.id}")
+                                    navController.navigate(AppRoutes.bloquePublicoDetalle(bloque.id))
                                 }
                             )
                         }
@@ -190,7 +209,7 @@ fun BloquePublicoCard(
         ) {
             // Título del bloque
             Text(
-                text = bloque.nombre,
+                text = bloque.nombre.ifEmpty { "Sin nombre" },
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -207,7 +226,7 @@ fun BloquePublicoCard(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "por ${bloque.nombreUsuario}",
+                    text = "por ${bloque.nombreUsuario.ifEmpty { "Anónimo" }}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -234,7 +253,7 @@ fun BloquePublicoCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = bloque.categoria,
+                            text = bloque.categoria.ifEmpty { "General" },
                             style = MaterialTheme.typography.bodySmall
                         )
                     }

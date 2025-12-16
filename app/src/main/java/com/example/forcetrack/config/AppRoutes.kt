@@ -28,7 +28,11 @@ object AppRoutes {
     const val DAILY_ARG_DATE = "dateIso"
     const val DAILY = "$DAILY_ROUTE/{$DAILY_ARG_USER}/{$DAILY_ARG_DATE}"
 
-    const val NEW_SCREEN = "new_screen"
+    const val BLOQUES_PUBLICOS = "bloques_publicos"
+    const val BLOQUE_PUBLICO_DETALLE_ROUTE = "bloque_publico_detalle"
+    const val BLOQUE_PUBLICO_DETALLE_ARG = "bloqueId"
+    const val BLOQUE_PUBLICO_DETALLE = "$BLOQUE_PUBLICO_DETALLE_ROUTE/{$BLOQUE_PUBLICO_DETALLE_ARG}"
+    const val BLOQUE_PUBLICO_LAB = "bloque_publico_lab"
 
     /**
      * Construye una ruta con parámetros de forma segura
@@ -39,5 +43,5 @@ object AppRoutes {
     fun ejerciciosWithDiaId(diaId: Int) = "$EJERCICIOS_ROUTE/$diaId"
     fun calendarWithUserId(userId: Int) = "$CALENDAR_ROUTE/$userId"
     fun dailyWithParams(userId: Int, dateIso: String) = "$DAILY_ROUTE/$userId/$dateIso"
+    fun bloquePublicoDetalle(bloqueId: Int) = "$BLOQUE_PUBLICO_DETALLE_ROUTE/$bloqueId"
 }
-

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.SportsGymnastics
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,7 +44,7 @@ fun BloquesScreen(
     onBloqueSelected: (Int) -> Unit,
     onLogout: () -> Unit,
     onOpenCalendar: () -> Unit,
-    onOpenNewScreen: () -> Unit = {}
+    onOpenBloquesPublicos: () -> Unit = {}
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var bloqueToDelete by remember { mutableStateOf<BloqueEntity?>(null) }
@@ -106,8 +107,8 @@ fun BloquesScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = onOpenNewScreen) {
-                        Icon(Icons.Default.FitnessCenter, "Nueva Pantalla")
+                    IconButton(onClick = onOpenBloquesPublicos) {
+                        Icon(Icons.Default.People, "Comunidad - Rutinas Públicas")
                     }
                     IconButton(onClick = onOpenCalendar) {
                         Icon(Icons.Default.CalendarToday, "Calendario")
@@ -176,7 +177,10 @@ fun BloquesScreen(
                             BloqueCard(
                                 bloque = bloque,
                                 onClick = { onBloqueSelected(bloque.id) },
-                                onDelete = { bloqueToDelete = bloque }
+                                onDelete = { bloqueToDelete = bloque },
+                                onVisibilityChange = { esPublico ->
+                                    bloquesViewModel.cambiarVisibilidad(bloque.id, esPublico)
+                                }
                             )
                         }
 
@@ -223,7 +227,12 @@ fun ThoughtBubble(text: String, modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BloqueCard(bloque: BloqueEntity, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun BloqueCard(
+    bloque: BloqueEntity, 
+    onClick: () -> Unit, 
+    onDelete: () -> Unit,
+    onVisibilityChange: (Boolean) -> Unit = {}
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
@@ -233,59 +242,90 @@ private fun BloqueCard(bloque: BloqueEntity, onClick: () -> Unit, onDelete: () -
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(20.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                // Icono decorativo
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FitnessCenter,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    // Icono decorativo
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FitnessCenter,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column {
+                        Text(
+                            text = bloque.nombre,
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = bloque.categoria,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Column {
-                    Text(
-                        text = bloque.nombre,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = bloque.categoria,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
 
-            IconButton(onClick = onDelete) {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete, 
+                        "Eliminar bloque", 
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                    )
+                }
+                
                 Icon(
-                    Icons.Default.Delete, 
-                    "Eliminar bloque", 
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                    Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
                 )
             }
             
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp)
-            )
+            // Switch de visibilidad
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (bloque.esPublico) Icons.Default.People else Icons.Default.FitnessCenter,
+                        contentDescription = null,
+                        tint = if (bloque.esPublico) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (bloque.esPublico) "Público en comunidad" else "Privado",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Switch(
+                    checked = bloque.esPublico,
+                    onCheckedChange = onVisibilityChange,
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectTapGestures(onTap = { /* Prevenir onClick del Card */ })
+                    }
+                )
+            }
         }
     }
 }

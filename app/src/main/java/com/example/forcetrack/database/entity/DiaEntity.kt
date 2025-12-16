@@ -24,5 +24,7 @@ data class DiaEntity(
     val nombre: String,
     val notas: String = "",
     val fecha: Long = System.currentTimeMillis(),
-    val numeroSemana: Int = 1
+    val numeroSemana: Int = 1,
+    val completado: Boolean = false,
+    val fechaCompletado: String? = null
 )

@@ -1,32 +1,39 @@
 package com.example.forcetrack.network.dto
 
+import com.google.gson.annotations.SerializedName
+
 /**
  * ⚠️ ARCHIVO OBSOLETO - NO USAR
  *
  * Este archivo ha sido reemplazado por los DTOs en:
- * com.example.forcetrack.network.api.XanoApi
+ * com.example.forcetrack.network.api.ApiService
  *
- * Los DTOs ahora están todos en XanoApi.kt para mejor organización.
- * RemoteRepository hace la conversión automáticamente.
+ * Los DTOs ahora están organizados por entidad.
  *
  * Este archivo se mantiene temporalmente solo por compatibilidad.
  * Será eliminado en futuras versiones.
  */
 
-// Los DTOs de Auth ahora están en XanoApi.kt
-// Usa: com.example.forcetrack.network.api.UsuarioDto
-// Usa: com.example.forcetrack.network.api.LoginRequestDto
-// Usa: com.example.forcetrack.network.api.RegistroRequestDto
+// Los DTOs de Auth ahora están en archivos separados
+// Usa: com.example.forcetrack.network.dto.UsuarioDto
+// Usa: com.example.forcetrack.network.dto.LoginRequest
+// Usa: com.example.forcetrack.network.dto.CreateUsuarioRequest
 
 /**
  * DTOs para autenticación
  */
 
 data class UsuarioDto(
+    @SerializedName("id")
     val id: Int,
+    @SerializedName("nombre_usuario")
     val nombreUsuario: String,
+    @SerializedName("correo")
     val correo: String,
-    val contrasena: String? = null
+    @SerializedName("contrasena")
+    val contrasena: String? = null,
+    @SerializedName("created_at")
+    val createdAt: String? = null
 )
 
 data class AuthResponseDto(

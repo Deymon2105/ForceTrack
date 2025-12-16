@@ -16,6 +16,8 @@ class ViewModelFactory(
         return when {
             modelClass.isAssignableFrom(AuthViewModel::class.java) -> AuthViewModel(repository, sessionManager) as T
             modelClass.isAssignableFrom(BloquesViewModel::class.java) -> BloquesViewModel(repository) as T
+            modelClass.isAssignableFrom(BloquesPublicosViewModel::class.java) -> BloquesPublicosViewModel() as T
+            modelClass.isAssignableFrom(BloquePublicoDetalleViewModel::class.java) -> BloquePublicoDetalleViewModel() as T
             modelClass.isAssignableFrom(SplitViewModel::class.java) -> SplitViewModel(repository) as T
             modelClass.isAssignableFrom(RutinaViewModel::class.java) -> RutinaViewModel(repository) as T
             modelClass.isAssignableFrom(TrainingLogViewModel::class.java) -> TrainingLogViewModel(repository) as T

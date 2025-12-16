@@ -9,8 +9,9 @@ object ApiConfig {
     private object LocalEndpoints {
         // 10.0.2.2 es el alias de localhost para el emulador de Android
         // Si usas un dispositivo físico, cambia esto por la IP de tu PC (ej. 192.168.1.X)
-        //const val BASE_URL = "http://10.0.2.2:8080/api/"
-        const val BASE_URL = "http://192.168.1.84:8080/api/"  // Para dispositivo físico
+        // 10.0.2.2 es el alias de localhost para el emulador de Android
+        // Para ejecutar en el emulador usa esta URL. Si pruebas en un dispositivo físico, reemplaza por la IP de tu PC.
+        const val BASE_URL = "http://10.0.2.2:8080/api/"  // Emulador
     }
 
     /**
@@ -22,7 +23,7 @@ object ApiConfig {
     /**
      * Cambia a TRUE cuando vayas a generar el APK para Play Store
      */
-    private const val IS_PRODUCTION = false
+    private const val IS_PRODUCTION = true
 
     /**
      * Getters públicos

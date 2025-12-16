@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.forcetrack.database.entity.UsuarioEntity
 import com.example.forcetrack.database.repository.ForceTrackRepository
-import com.example.forcetrack.network.repository.RemoteRepository
+import com.example.forcetrack.network.RetrofitClient
+import com.example.forcetrack.network.dto.LoginRequest
+import com.example.forcetrack.network.dto.CreateUsuarioRequest
 import com.example.forcetrack.utils.ValidationUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,9 +36,6 @@ class AuthViewModel(
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
-
-    // Repositorio remoto para conectarse a Xano
-    private val remoteRepository = RemoteRepository()
 
     // ⛔ ANTI-SPAM: Control de operaciones en proceso
     private val _operacionesEnProceso = MutableStateFlow<Set<String>>(emptySet())
@@ -96,87 +95,87 @@ class AuthViewModel(
             marcarOperacionEnProceso("login")
             _uiState.update { it.copy(authState = AuthState.LOADING) }
             try {
-                Log.d("AuthViewModel", "Intentando login con Xano usando correo: $correo")
+                Log.d("AuthViewModel", "Intentando login con backend usando correo: $correo")
 
-                // Intentar login con Xano primero
-                remoteRepository.login(correo, contrasena)
-                    .onSuccess { authResponse ->
-                        Log.d("AuthViewModel", "Login exitoso en Xano")
-                        authResponse.usuario?.let { usuarioDto ->
-                            // Guardar/actualizar usuario en la base de datos local
-                            val localUser = UsuarioEntity(
-                                id = usuarioDto.id,
-                                nombreUsuario = usuarioDto.nombreUsuario,
-                                correo = usuarioDto.correo,
-                                contrasena = contrasena
+                // Intentar login con backend
+                val loginRequest = LoginRequest(correo = correo, contrasena = contrasena)
+                val response = RetrofitClient.authApi.login(loginRequest)
+                
+                if (response.isSuccessful && response.body() != null) {
+                    val usuarioDto = response.body()!!
+                    Log.d("AuthViewModel", "Login exitoso en backend")
+                    
+                    // Validar que los campos necesarios no sean null
+                    if (usuarioDto.nombreUsuario.isNullOrBlank() || usuarioDto.correo.isNullOrBlank()) {
+                        Log.e("AuthViewModel", "Error: El usuario del backend tiene campos null")
+                        _uiState.update {
+                            it.copy(
+                                authState = AuthState.ERROR,
+                                errorMessage = "Error: Datos del usuario inválidos"
                             )
-
-                            // Insertar o actualizar en la BD local
-                            try {
-                                repository.registrarUsuario(
-                                    localUser.nombreUsuario,
-                                    localUser.correo,
-                                    localUser.contrasena
-                                )
-                            } catch (_: Exception) {
-                                // Si ya existe, no pasa nada
-                            }
-
-                            // Guardar sesión
-                            try {
-                                sessionManager.saveCurrentUserId(usuarioDto.id)
-                            } catch (_: Exception) { }
-
-                            _uiState.update {
-                                AuthUiState(authState = AuthState.LOGGED_IN, currentUser = localUser)
-                            }
-                            liberarOperacion("login")
-                        } ?: run {
-                            _uiState.update {
-                                it.copy(
-                                    authState = AuthState.ERROR,
-                                    errorMessage = "Error obteniendo datos del usuario"
-                                )
-                            }
-                            liberarOperacion("login")
-                        }
-                    }
-                    .onFailure { error ->
-                        Log.e("AuthViewModel", "Error en login Xano: ${error.message}")
-                        // Intentar login local como fallback (buscar por correo)
-                        try {
-                            // Buscar usuario por correo en la BD local
-                            val localUser = repository.iniciarSesionPorCorreo(correo, contrasena)
-                            if (localUser != null) {
-                                Log.d("AuthViewModel", "Login local exitoso (modo offline)")
-                                try {
-                                    sessionManager.saveCurrentUserId(localUser.id)
-                                } catch (_: Exception) { }
-                                _uiState.update {
-                                    AuthUiState(authState = AuthState.LOGGED_IN, currentUser = localUser)
-                                }
-                            } else {
-                                _uiState.update {
-                                    it.copy(
-                                        authState = AuthState.ERROR,
-                                        errorMessage = "Correo o contraseña incorrectos"
-                                    )
-                                }
-                            }
-                        } catch (_: Exception) {
-                            _uiState.update {
-                                it.copy(
-                                    authState = AuthState.ERROR,
-                                    errorMessage = "Correo o contraseña incorrectos"
-                                )
-                            }
                         }
                         liberarOperacion("login")
+                        return@launch
                     }
+                    
+                    // Guardar/actualizar usuario en la base de datos local
+                    val localUser = UsuarioEntity(
+                        id = usuarioDto.id,
+                        nombreUsuario = usuarioDto.nombreUsuario,
+                        correo = usuarioDto.correo,
+                        contrasena = contrasena
+                    )
+
+                    // Insertar o actualizar en la BD local usando el mismo ID del backend
+                    try {
+                        repository.insertarUsuarioConId(
+                            id = usuarioDto.id,
+                            nombreUsuario = localUser.nombreUsuario,
+                            correo = localUser.correo,
+                            contrasena = localUser.contrasena
+                        )
+                    } catch (_: Exception) {
+                        // Si ya existe o falla la inserción, continuar sin bloquear el login
+                    }
+
+                    // Guardar sesión
+                    try {
+                        sessionManager.saveCurrentUserId(usuarioDto.id)
+                    } catch (_: Exception) { }
+
+                    _uiState.update {
+                        AuthUiState(authState = AuthState.LOGGED_IN, currentUser = localUser)
+                    }
+                } else {
+                    // Manejar errores del servidor con mensajes claros
+                    val errorMessage = obtenerMensajeError(response.code(), response.errorBody()?.string())
+                    Log.e("AuthViewModel", "Error en login backend: ${response.code()} - $errorMessage")
+                    
+                    _uiState.update {
+                        it.copy(
+                            authState = AuthState.ERROR,
+                            errorMessage = errorMessage
+                        )
+                    }
+                }
+                liberarOperacion("login")
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Error general en login: ${e.message}")
+                e.printStackTrace()
+                
+                // Determinar mensaje de error amigable
+                val errorMessage = when {
+                    e.message?.contains("Unable to resolve host", ignoreCase = true) == true ||
+                    e.message?.contains("Failed to connect", ignoreCase = true) == true ->
+                        "No se puede conectar al servidor. Verifica tu conexión a internet."
+                    e.message?.contains("timeout", ignoreCase = true) == true ->
+                        "La conexión tardó demasiado. Por favor, intenta de nuevo."
+                    else ->
+                        "Error al iniciar sesión. Por favor, verifica tu correo y contraseña."
+                }
+                
                 _uiState.update {
-                    it.copy(authState = AuthState.ERROR, errorMessage = "Error: ${e.message}")
+                    it.copy(authState = AuthState.ERROR, errorMessage = errorMessage)
                 }
                 liberarOperacion("login")
             }
@@ -207,77 +206,110 @@ class AuthViewModel(
             marcarOperacionEnProceso("register")
             _uiState.update { it.copy(authState = AuthState.LOADING) }
             try {
-                Log.d("AuthViewModel", "Intentando registro en Xano...")
+                Log.d("AuthViewModel", "Intentando registro en backend...")
                 Log.d("AuthViewModel", "   Usuario: $nombreUsuario")
                 Log.d("AuthViewModel", "   Correo: $correo")
 
-                // Registrar en Xano primero
-                remoteRepository.register(nombreUsuario, correo, contrasena)
-                    .onSuccess { authResponse ->
-                        Log.d("AuthViewModel", "Registro exitoso en Xano!")
-                        authResponse.usuario?.let { usuarioDto ->
-                            Log.d("AuthViewModel", "   ID generado: ${usuarioDto.id}")
+                // Registrar en backend
+                val request = CreateUsuarioRequest(
+                    nombreUsuario = nombreUsuario,
+                    correo = correo,
+                    contrasena = contrasena
+                )
+                val response = RetrofitClient.authApi.createUsuario(request)
+                
+                if (response.isSuccessful && response.body() != null) {
+                    val usuarioDto = response.body()!!
+                    Log.d("AuthViewModel", "Registro exitoso en backend!")
+                    Log.d("AuthViewModel", "   ID generado: ${usuarioDto.id}")
+                    Log.d("AuthViewModel", "   Nombre usuario: ${usuarioDto.nombreUsuario}")
+                    Log.d("AuthViewModel", "   Correo: ${usuarioDto.correo}")
 
-                            // Guardar en la base de datos local CON EL MISMO ID de Xano
-                            try {
-                                Log.d("AuthViewModel", "Guardando usuario en BD local con ID: ${usuarioDto.id}")
-                                repository.insertarUsuarioConId(
-                                    id = usuarioDto.id,
-                                    nombreUsuario = usuarioDto.nombreUsuario,
-                                    correo = usuarioDto.correo,
-                                    contrasena = contrasena
-                                )
-                                Log.d("AuthViewModel", "Usuario guardado exitosamente en BD local")
-                            } catch (e: Exception) {
-                                Log.w("AuthViewModel", "Error guardando usuario localmente: ${e.message}")
-                                // Si falla (ya existe), intentar obtenerlo
-                            }
-
-                            // Crear la entidad local para el estado
-                            val localUser = UsuarioEntity(
-                                id = usuarioDto.id,
-                                nombreUsuario = usuarioDto.nombreUsuario,
-                                correo = usuarioDto.correo,
-                                contrasena = contrasena
-                            )
-
-                            // Guardar sesión
-                            try {
-                                sessionManager.saveCurrentUserId(usuarioDto.id)
-                                Log.d("AuthViewModel", "Sesión guardada para usuario ID: ${usuarioDto.id}")
-                            } catch (_: Exception) { }
-
-                            _uiState.update {
-                                AuthUiState(authState = AuthState.LOGGED_IN, currentUser = localUser)
-                            }
-                            liberarOperacion("register")
-                        } ?: run {
-                            Log.e("AuthViewModel", "No se recibieron datos del usuario")
-                            _uiState.update {
-                                it.copy(
-                                    authState = AuthState.ERROR,
-                                    errorMessage = "Error al crear el usuario"
-                                )
-                            }
-                            liberarOperacion("register")
-                        }
-                    }
-                    .onFailure { error ->
-                        Log.e("AuthViewModel", "Error en registro Xano: ${error.message}")
-                        error.printStackTrace()
+                    // Validar que los campos necesarios no sean null
+                    if (usuarioDto.nombreUsuario.isNullOrBlank() || usuarioDto.correo.isNullOrBlank()) {
+                        Log.e("AuthViewModel", "Error: El usuario del backend tiene campos null o vacíos")
+                        Log.e("AuthViewModel", "   nombreUsuario: '${usuarioDto.nombreUsuario}'")
+                        Log.e("AuthViewModel", "   correo: '${usuarioDto.correo}'")
                         _uiState.update {
                             it.copy(
                                 authState = AuthState.ERROR,
-                                errorMessage = "Error al conectar con el servidor: ${error.message}"
+                                errorMessage = "Error: El servidor devolvió datos inválidos"
                             )
                         }
                         liberarOperacion("register")
+                        return@launch
                     }
+
+                    // Guardar en la base de datos local CON EL MISMO ID del backend
+                    try {
+                        Log.d("AuthViewModel", "Guardando usuario en BD local con ID: ${usuarioDto.id}")
+                        repository.insertarUsuarioConId(
+                            id = usuarioDto.id,
+                            nombreUsuario = usuarioDto.nombreUsuario,
+                            correo = usuarioDto.correo,
+                            contrasena = contrasena
+                        )
+                        Log.d("AuthViewModel", "Usuario guardado exitosamente en BD local")
+                    } catch (e: Exception) {
+                        Log.w("AuthViewModel", "Error guardando usuario localmente: ${e.message}")
+                        e.printStackTrace()
+                        // Si falla (ya existe), intentar obtenerlo
+                    }
+
+                    // Crear la entidad local para el estado
+                    val localUser = UsuarioEntity(
+                        id = usuarioDto.id,
+                        nombreUsuario = usuarioDto.nombreUsuario,
+                        correo = usuarioDto.correo,
+                        contrasena = contrasena
+                    )
+
+                    // Guardar sesión
+                    try {
+                        sessionManager.saveCurrentUserId(usuarioDto.id)
+                        Log.d("AuthViewModel", "Sesión guardada para usuario ID: ${usuarioDto.id}")
+                    } catch (_: Exception) { }
+
+                    _uiState.update {
+                        AuthUiState(authState = AuthState.LOGGED_IN, currentUser = localUser)
+                    }
+                } else {
+                    // Manejar diferentes códigos de error
+                    val errorBodyString = try {
+                        response.errorBody()?.string() ?: ""
+                    } catch (e: Exception) {
+                        ""
+                    }
+                    Log.e("AuthViewModel", "Error en registro backend: ${response.code()}")
+                    Log.e("AuthViewModel", "Error body: $errorBodyString")
+                    
+                    val errorMessage = obtenerMensajeError(response.code(), errorBodyString)
+                    
+                    _uiState.update {
+                        it.copy(
+                            authState = AuthState.ERROR,
+                            errorMessage = errorMessage
+                        )
+                    }
+                }
+                liberarOperacion("register")
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Error general en registro: ${e.message}")
                 e.printStackTrace()
+                
+                // Determinar mensaje de error amigable
+                val errorMessage = when {
+                    e.message?.contains("Unable to resolve host", ignoreCase = true) == true ||
+                    e.message?.contains("Failed to connect", ignoreCase = true) == true ->
+                        "No se puede conectar al servidor. Verifica tu conexión a internet."
+                    e.message?.contains("timeout", ignoreCase = true) == true ->
+                        "La conexión tardó demasiado. Por favor, intenta de nuevo."
+                    else ->
+                        "Error al registrar usuario. Por favor, intenta de nuevo más tarde."
+                }
+                
                 _uiState.update {
-                    it.copy(authState = AuthState.ERROR, errorMessage = "Error: ${e.message}")
+                    it.copy(authState = AuthState.ERROR, errorMessage = errorMessage)
                 }
                 liberarOperacion("register")
             }
@@ -293,5 +325,59 @@ class AuthViewModel(
     
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null, authState = AuthState.LOGGED_OUT) }
+    }
+    
+    /**
+     * Convierte códigos de error HTTP en mensajes claros y comprensibles para el usuario
+     */
+    private fun obtenerMensajeError(statusCode: Int, errorBody: String?): String {
+        // Intentar extraer mensaje del JSON de error del servidor
+        val errorBodyString = errorBody ?: ""
+        try {
+            if (errorBodyString.isNotBlank()) {
+                val gson = com.google.gson.Gson()
+                val errorMap = gson.fromJson(errorBodyString, Map::class.java) as? Map<*, *>
+                val serverMessage = errorMap?.get("error")?.toString()
+                if (!serverMessage.isNullOrBlank()) {
+                    return serverMessage
+                }
+            }
+        } catch (e: Exception) {
+            // Si no se puede parsear el JSON, continuar con los mensajes por defecto
+        }
+        
+        // Mensajes amigables según el código de error
+        return when (statusCode) {
+            400 -> {
+                if (errorBodyString.contains("nombre", ignoreCase = true)) {
+                    "El nombre de usuario debe tener al menos 3 caracteres"
+                } else if (errorBodyString.contains("correo", ignoreCase = true)) {
+                    "El formato del correo electrónico no es válido"
+                } else if (errorBodyString.contains("contraseña", ignoreCase = true) || errorBodyString.contains("contrasena", ignoreCase = true)) {
+                    "La contraseña debe tener al menos 6 caracteres"
+                } else {
+                    "Datos inválidos. Verifica que:\n• El nombre de usuario tenga al menos 3 caracteres\n• El correo sea válido\n• La contraseña tenga al menos 6 caracteres"
+                }
+            }
+            401 -> "Correo o contraseña incorrectos"
+            403 -> "No tienes permisos para realizar esta acción"
+            404 -> "El recurso solicitado no existe"
+            409 -> {
+                when {
+                    errorBodyString.contains("correo", ignoreCase = true) -> 
+                        "El correo electrónico ya está registrado. Por favor, usa otro correo o inicia sesión."
+                    errorBodyString.contains("nombre", ignoreCase = true) || errorBodyString.contains("usuario", ignoreCase = true) -> 
+                        "El nombre de usuario ya está registrado. Por favor, elige otro nombre de usuario."
+                    else -> 
+                        "El usuario o correo electrónico ya está registrado. Por favor, usa otros datos o inicia sesión."
+                }
+            }
+            422 -> "Los datos proporcionados no son válidos"
+            500 -> "Error en el servidor. Por favor, intenta de nuevo más tarde"
+            502 -> "El servidor no está disponible temporalmente. Intenta más tarde"
+            503 -> "El servicio no está disponible en este momento. Intenta más tarde"
+            504 -> "La conexión tardó demasiado. Por favor, intenta de nuevo"
+            else -> "Error de conexión. Por favor, verifica tu internet e intenta de nuevo"
+        }
     }
 }

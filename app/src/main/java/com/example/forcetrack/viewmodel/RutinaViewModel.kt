@@ -7,7 +7,9 @@ import com.example.forcetrack.database.repository.ForceTrackRepository
 import com.example.forcetrack.model.DiaRutina
 import com.example.forcetrack.model.EjercicioRutina
 import com.example.forcetrack.model.Serie
-import com.example.forcetrack.network.repository.RemoteRepository
+import com.example.forcetrack.network.RetrofitClient
+import com.example.forcetrack.network.dto.CreateEjercicioRequest
+import com.example.forcetrack.network.dto.CreateSerieRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,8 +32,6 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
     private val _mensajeError = MutableStateFlow("")
     val mensajeError: StateFlow<String> = _mensajeError.asStateFlow()
 
-    // Repositorio remoto para Xano
-    private val remoteRepository = RemoteRepository()
     private var currentDiaId: Int? = null
 
     // Control para evitar spam en operaciones de series
@@ -69,6 +69,12 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                     return@launch
                 }
 
+                // Asegurar que currentDiaId esté actualizado
+                if (currentDiaId != diaEntity.id) {
+                    currentDiaId = diaEntity.id
+                    Log.d("RutinaViewModel", "✅ currentDiaId actualizado a ${diaEntity.id}")
+                }
+                
                 // Actualizar info del día inmediatamente
                 _diaActual.value = DiaRutina(
                     id = diaEntity.id,
@@ -77,7 +83,9 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                     notas = diaEntity.notas,
                     ejercicios = mutableListOf(),
                     fecha = diaEntity.fecha,
-                    numeroSemana = diaEntity.numeroSemana
+                    numeroSemana = diaEntity.numeroSemana,
+                    completado = diaEntity.completado,
+                    fechaCompletado = diaEntity.fechaCompletado
                 )
 
                 // Cargar ejercicios con series (usando first() en vez de collect para evitar bucles)
@@ -111,8 +119,8 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                 _cargando.value = false
                 Log.d("RutinaViewModel", " Día cargado completamente desde BD local")
 
-                // 2. SINCRONIZAR CON XANO EN SEGUNDO PLANO (no bloqueante)
-                sincronizarEjerciciosConXano(diaId)
+                // 2. SINCRONIZAR CON BACKEND EN SEGUNDO PLANO (no bloqueante)
+                sincronizarEjerciciosConBackend(diaId)
 
             } catch (e: Exception) {
                 Log.e("RutinaViewModel", " Error cargando día: ${e.message}")
@@ -123,25 +131,10 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
         }
     }
 
-    // Sincronizar ejercicios desde Xano a BD local en segundo plano
-    private fun sincronizarEjerciciosConXano(diaId: Int) {
-        viewModelScope.launch {
-            try {
-                Log.d("RutinaViewModel", " Sincronizando con Xano en segundo plano...")
-
-                val xanoRepo = com.example.forcetrack.network.repository.XanoRepository()
-                xanoRepo.obtenerEjercicios(diaId)
-                    .onSuccess { ejerciciosDto ->
-                        Log.d("RutinaViewModel", "📥 ${ejerciciosDto.size} ejercicios en Xano")
-                        // La sincronización es pasiva, no afecta la UI
-                    }
-                    .onFailure { error ->
-                        Log.w("RutinaViewModel", "⚠ No se pudo sincronizar: ${error.message}")
-                    }
-            } catch (e: Exception) {
-                Log.w("RutinaViewModel", " Error en sincronización: ${e.message}")
-            }
-        }
+    // Sincronizar ejercicios desde backend a BD local en segundo plano
+    private fun sincronizarEjerciciosConBackend(diaId: Int) {
+        // TODO: Implementar sincronización cuando se necesite
+        Log.d("RutinaViewModel", " Sincronización con backend deshabilitada")
     }
 
     fun agregarEjercicio(nombreEjercicio: String) {
@@ -188,8 +181,15 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                     listaActual + nuevoEjercicio
                 }
 
-                // 4. SUBIR A XANO EN SEGUNDO PLANO (no bloqueante)
-                subirEjercicioAXano(ejercicioId, dia.id, nombreEjercicio, 90)
+                // 4. Verificar si el bloque es público y sincronizar
+                val bloqueId = repository.obtenerDiaPorId(dia.id)?.bloqueId
+                if (bloqueId != null) {
+                    val bloque = repository.obtenerBloquePorId(bloqueId)
+                    if (bloque?.esPublico == true) {
+                        Log.d("RutinaViewModel", "Bloque es público, sincronizando ejercicio al backend...")
+                        subirEjercicioAlBackend(ejercicioId, serieId, dia.id, bloqueId, nombreEjercicio, 90)
+                    }
+                }
 
             } catch (e: Exception) {
                 Log.e("RutinaViewModel", "Error creando ejercicio localmente: ${e.message}")
@@ -198,49 +198,75 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
         }
     }
 
-    // Subir ejercicio y serie inicial a Xano en segundo plano
-    private fun subirEjercicioAXano(ejercicioIdLocal: Int, diaId: Int, nombreEjercicio: String, descanso: Int) {
+    private fun subirEjercicioAlBackend(
+        ejercicioIdLocal: Int,
+        serieIdLocal: Int,
+        diaIdLocal: Int,
+        bloqueIdLocal: Int,
+        nombreEjercicio: String,
+        descanso: Int
+    ) {
         viewModelScope.launch {
             try {
-                Log.d("RutinaViewModel", "Subiendo ejercicio '$nombreEjercicio' a Xano en segundo plano...")
+                // Buscar el día en el backend
+                val bloqueLocal = repository.obtenerBloquePorId(bloqueIdLocal) ?: return@launch
+                val bloquesBackendResponse = RetrofitClient.bloqueApi.getAllBloques(bloqueLocal.usuarioId)
+                
+                if (!bloquesBackendResponse.isSuccessful) return@launch
+                
+                val bloquesBackend = bloquesBackendResponse.body() ?: return@launch
+                val bloqueBackend = bloquesBackend.find { 
+                    it.nombre == bloqueLocal.nombre && it.usuarioId == bloqueLocal.usuarioId 
+                } ?: return@launch
+                
+                // Obtener días del bloque backend
+                val diasBackendResponse = RetrofitClient.diaApi.getDiasByBloque(bloqueBackend.id)
+                if (!diasBackendResponse.isSuccessful) return@launch
+                
+                val diasBackend = diasBackendResponse.body() ?: return@launch
+                val diaLocal = repository.obtenerDiaPorId(diaIdLocal) ?: return@launch
+                val diaBackend = diasBackend.find { it.nombre == diaLocal.nombre } ?: return@launch
+                
+                Log.d("RutinaViewModel", "Subiendo ejercicio '$nombreEjercicio' al backend...")
 
-                val ejercicioDto = com.example.forcetrack.network.dto.EjercicioDto(
-                    id = 0,
-                    diaId = diaId,
+                // 1. Crear ejercicio en el backend
+                val ejercicioRequest = CreateEjercicioRequest(
+                    diaId = diaBackend.id,
                     nombre = nombreEjercicio,
-                    descansoSegundos = descanso,
-                    series = null
+                    descansoSegundos = descanso
                 )
 
-                remoteRepository.createEjercicio(ejercicioDto)
-                    .onSuccess { ejercicioCreado ->
-                        Log.d("RutinaViewModel", "Ejercicio subido a Xano con ID: ${ejercicioCreado.id}")
+                val ejercicioResponse = RetrofitClient.ejercicioApi.createEjercicio(ejercicioRequest)
 
-                        // Crear serie inicial en Xano
-                        val serieDto = com.example.forcetrack.network.dto.SerieDto(
-                            id = 0,
-                            ejercicioId = ejercicioCreado.id,
+                if (ejercicioResponse.isSuccessful) {
+                    val ejercicioDto = ejercicioResponse.body()
+                    Log.d("RutinaViewModel", "✅ Ejercicio sincronizado. Backend ID: ${ejercicioDto?.id}")
+
+                    // 2. Crear serie inicial en el backend
+                    ejercicioDto?.id?.let { backendEjercicioId ->
+                        val serieRequest = CreateSerieRequest(
+                            ejercicioId = backendEjercicioId,
                             peso = 0.0,
                             repeticiones = 0,
-                            rir = 0,
-                            completada = false
+                            rir = 0
                         )
 
-                        remoteRepository.createSerie(serieDto)
-                            .onSuccess {
-                                Log.d("RutinaViewModel", "Serie inicial subida a Xano")
-                            }
-                            .onFailure { error ->
-                                Log.w("RutinaViewModel", "Error subiendo serie a Xano: ${error.message}")
-                            }
+                        val serieResponse = RetrofitClient.serieApi.createSerie(serieRequest)
+
+                        if (serieResponse.isSuccessful) {
+                            Log.d("RutinaViewModel", "✅ Serie inicial sincronizada. Backend ID: ${serieResponse.body()?.id}")
+                        } else {
+                            Log.e("RutinaViewModel", "❌ Error al sincronizar serie inicial: ${serieResponse.code()}")
+                        }
                     }
-                    .onFailure { error ->
-                        Log.w("RutinaViewModel", "Error subiendo ejercicio a Xano: ${error.message}")
-                        // No mostrar error al usuario, el ejercicio ya está guardado localmente
-                    }
+
+                } else {
+                    Log.e("RutinaViewModel", "❌ Error al sincronizar ejercicio: ${ejercicioResponse.code()} - ${ejercicioResponse.message()}")
+                }
+
             } catch (e: Exception) {
-                Log.w("RutinaViewModel", "Excepción subiendo a Xano: ${e.message}")
-                // No afecta la experiencia del usuario
+                Log.e("RutinaViewModel", "❌ Error de red al sincronizar ejercicio: ${e.message}")
+                // No mostramos error al usuario, es sincronización en segundo plano
             }
         }
     }
@@ -249,7 +275,7 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
         viewModelScope.launch {
             try {
                 Log.d("RutinaViewModel", "Eliminando ejercicio $ejercicioId...")
-                // Por ahora solo eliminar localmente, Xano no tiene el endpoint implementado
+                // Por ahora solo eliminar localmente, backend no tiene el endpoint implementado
                 repository.eliminarEjercicio(ejercicioId)
                 currentDiaId?.let { cargarDia(it) }
             } catch (e: Exception) {
@@ -340,24 +366,26 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                 liberarOperacion(ejercicioId, "agregar_serie")
                 Log.d("RutinaViewModel", " Botón desbloqueado - listo para agregar otra serie")
 
-                // 6. Lanzar subida a Xano en coroutine separada (totalmente en segundo plano)
+                // 6. Lanzar subida al backend en coroutine separada (totalmente en segundo plano)
                 viewModelScope.launch {
-                    val serieDto = com.example.forcetrack.network.dto.SerieDto(
-                        id = 0,
-                        ejercicioId = ejercicioId,
-                        peso = 0.0,
-                        repeticiones = 0,
-                        rir = 0,
-                        completada = false
-                    )
+                    try {
+                        val serieRequest = com.example.forcetrack.network.dto.CreateSerieRequest(
+                            ejercicioId = ejercicioId,
+                            peso = 0.0,
+                            repeticiones = 0,
+                            rir = 0,
+                            completada = false
+                        )
 
-                    remoteRepository.createSerie(serieDto)
-                        .onSuccess { serieCreada ->
-                            Log.d("RutinaViewModel", "Serie creada en servidor con ID: ${serieCreada.id}")
+                        val response = com.example.forcetrack.network.RetrofitClient.serieApi.createSerie(serieRequest)
+                        if (response.isSuccessful) {
+                            Log.d("RutinaViewModel", "Serie creada en servidor con ID: ${response.body()?.id}")
+                        } else {
+                            Log.w("RutinaViewModel", "Error creando serie en servidor: ${response.code()}")
                         }
-                        .onFailure { error ->
-                            Log.w("RutinaViewModel", "Error creando serie en servidor: ${error.message}")
-                        }
+                    } catch (e: Exception) {
+                        Log.w("RutinaViewModel", "Error creando serie en servidor: ${e.message}")
+                    }
                 }
 
             } catch (e: Exception) {
@@ -427,14 +455,19 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                     }
 
                     // Intentar eliminar en el servidor en segundo plano; si falla, solo loguear
-                    remoteRepository.deleteSerie(serieId)
-                        .onSuccess {
-                            Log.d("RutinaViewModel", "Serie eliminada del servidor")
-                        }
-                        .onFailure { error ->
-                            Log.e("RutinaViewModel", "Error eliminando serie en servidor: ${error.message}")
+                    viewModelScope.launch {
+                        try {
+                            val response = com.example.forcetrack.network.RetrofitClient.serieApi.deleteSerie(serieId)
+                            if (response.isSuccessful) {
+                                Log.d("RutinaViewModel", "Serie eliminada del servidor")
+                            } else {
+                                Log.e("RutinaViewModel", "Error eliminando serie en servidor: ${response.code()}")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("RutinaViewModel", "Error eliminando serie en servidor: ${e.message}")
                             _mensajeError.value = "Advertencia: la serie fue eliminada localmente, pero no en el servidor"
                         }
+                    }
                 } else {
                     // Si es ID temporal, solo eliminar localmente (ya se removió del estado)
                     Log.d("RutinaViewModel", "Serie temporal eliminada")
@@ -479,22 +512,24 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                     Log.e("RutinaViewModel", "Error actualizando en BD local: ${dbEx.message}")
                 }
 
-                // 3. Sincronizar con Xano en segundo plano (no bloqueante)
+                // 3. Sincronizar con backend en segundo plano (no bloqueante)
                 viewModelScope.launch {
-                    remoteRepository.updateSerie(serie.id, com.example.forcetrack.network.dto.SerieDto(
-                        id = serie.id,
-                        ejercicioId = serie.ejercicioId,
-                        peso = serie.peso,
-                        repeticiones = serie.reps,
-                        rir = serie.rir,
-                        completada = serie.completada
-                    ))
-                        .onSuccess {
-                            Log.d("RutinaViewModel", " Serie sincronizada con servidor")
+                    try {
+                        val updateRequest = com.example.forcetrack.network.dto.UpdateSerieRequest(
+                            peso = serie.peso,
+                            repeticiones = serie.reps,
+                            rir = serie.rir,
+                            completada = serie.completada
+                        )
+                        val response = com.example.forcetrack.network.RetrofitClient.serieApi.updateSerie(serie.id, updateRequest)
+                        if (response.isSuccessful) {
+                            Log.d("RutinaViewModel", "Serie sincronizada con servidor")
+                        } else {
+                            Log.w("RutinaViewModel", "Error sincronizando con servidor: ${response.code()}")
                         }
-                        .onFailure { error ->
-                            Log.w("RutinaViewModel", " Error sincronizando con servidor: ${error.message}")
-                        }
+                    } catch (e: Exception) {
+                        Log.w("RutinaViewModel", "Error sincronizando con servidor: ${e.message}")
+                    }
                 }
 
             } catch (e: Exception) {
@@ -535,7 +570,7 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
                 // Actualizar en la BD local
                 repository.actualizarNotasDia(dia.id, notas)
 
-                // TODO: Agregar actualización en Xano cuando implementes el endpoint PATCH para días
+                // TODO: Agregar actualización en backend cuando implementes el endpoint PATCH para días
                 Log.d("RutinaViewModel", "Notas actualizadas localmente")
             } catch (e: Exception) {
                 Log.e("RutinaViewModel", "Error actualizando notas: ${e.message}")
@@ -546,5 +581,152 @@ class RutinaViewModel(private val repository: ForceTrackRepository) : ViewModel(
 
     fun limpiarError() {
         _mensajeError.value = ""
+    }
+    
+    // Estado para el proceso de terminar día
+    private val _terminandoDia = MutableStateFlow(false)
+    val terminandoDia: StateFlow<Boolean> = _terminandoDia.asStateFlow()
+    
+    private val _estadisticasDia = MutableStateFlow<com.example.forcetrack.network.dto.EstadisticasDiaDto?>(null)
+    val estadisticasDia: StateFlow<com.example.forcetrack.network.dto.EstadisticasDiaDto?> = _estadisticasDia.asStateFlow()
+    
+    fun limpiarEstadisticas() {
+        _estadisticasDia.value = null
+    }
+    
+    /**
+     * Termina/completa el día de entrenamiento actual.
+     * Marca el día como completado y genera estadísticas.
+     */
+    fun terminarDia() {
+        Log.d("RutinaViewModel", "🔵 terminarDia() llamado")
+        
+        // Intentar obtener el ID del día actual de múltiples formas
+        val diaId = currentDiaId ?: _diaActual.value?.id
+        Log.d("RutinaViewModel", "🔵 currentDiaId = $currentDiaId, diaActual.id = ${_diaActual.value?.id}, usando diaId = $diaId")
+        
+        if (diaId == null || diaId <= 0) {
+            _mensajeError.value = "No hay un día cargado. Por favor, recarga la pantalla."
+            Log.e("RutinaViewModel", "❌ No hay día cargado para terminar. diaId es null o inválido")
+            return
+        }
+        
+        // Asegurar que currentDiaId esté actualizado
+        if (currentDiaId == null || currentDiaId != diaId) {
+            currentDiaId = diaId
+            Log.d("RutinaViewModel", "🔵 Actualizado currentDiaId a $diaId")
+        }
+        
+        viewModelScope.launch {
+            Log.d("RutinaViewModel", "🔵 Iniciando coroutine para terminar día")
+            _terminandoDia.value = true
+            _mensajeError.value = ""
+            
+            try {
+                Log.d("RutinaViewModel", "🏁 Terminando día $diaId...")
+                
+                // Intentar primero con PUT /terminar (endpoint recomendado)
+                try {
+                    val response = RetrofitClient.diaApi.terminarDia(diaId)
+                    Log.d("RutinaViewModel", "Respuesta PUT /terminar: código ${response.code()}, exitosa: ${response.isSuccessful}")
+                    
+                    if (response.isSuccessful && response.body() != null) {
+                        val resultado = response.body()!!
+                        Log.d("RutinaViewModel", "Resultado: exito=${resultado.exito}, mensaje=${resultado.mensaje}")
+                        
+                        if (resultado.exito && resultado.estadisticas != null) {
+                            Log.d("RutinaViewModel", "✅ Día terminado exitosamente: ${resultado.mensaje}")
+                            
+                            val stats = resultado.estadisticas!!
+                            _estadisticasDia.value = stats
+                            
+                            // Actualizar el día en el estado local
+                            _diaActual.update { dia ->
+                                dia?.copy(
+                                    completado = true,
+                                    fechaCompletado = stats.fechaCompletado
+                                )
+                            }
+                            
+                            // Recargar el día para obtener los datos actualizados
+                            cargarDia(diaId)
+                            return@launch
+                        } else {
+                            val mensajeError = resultado.mensaje ?: "No se pudo completar el día"
+                            Log.w("RutinaViewModel", "⚠️ Error: $mensajeError")
+                            _mensajeError.value = mensajeError
+                            return@launch
+                        }
+                    } else {
+                        val errorBody = try {
+                            response.errorBody()?.string() ?: "Error desconocido"
+                        } catch (e: Exception) {
+                            "No se pudo leer el error"
+                        }
+                        Log.w("RutinaViewModel", "PUT /terminar falló con código ${response.code()}, body: $errorBody")
+                    }
+                } catch (e1: Exception) {
+                    Log.w("RutinaViewModel", "PUT /terminar falló con excepción: ${e1.message}", e1)
+                }
+                
+                // Si PUT falla, usar POST /completar (endpoint alternativo)
+                try {
+                    Log.d("RutinaViewModel", "Intentando POST /completar como alternativa...")
+                    val postResponse = RetrofitClient.diaApi.completarDia(diaId)
+                    Log.d("RutinaViewModel", "Respuesta POST /completar: código ${postResponse.code()}, exitosa: ${postResponse.isSuccessful}")
+                    
+                    if (postResponse.isSuccessful && postResponse.body() != null) {
+                        val stats = postResponse.body()!!
+                        Log.d("RutinaViewModel", "✅ Día completado usando endpoint POST")
+                        _estadisticasDia.value = stats
+                        
+                        _diaActual.update { dia ->
+                            dia?.copy(
+                                completado = true,
+                                fechaCompletado = stats.fechaCompletado
+                            )
+                        }
+                        
+                        cargarDia(diaId)
+                    } else {
+                        val errorBody = try {
+                            postResponse.errorBody()?.string() ?: "Error desconocido"
+                        } catch (e: Exception) {
+                            "No se pudo leer el error"
+                        }
+                        Log.e("RutinaViewModel", "❌ Error al terminar día: ${postResponse.code()} - $errorBody")
+                        _mensajeError.value = "Error al terminar el día. Verifica tu conexión e intenta de nuevo."
+                    }
+                } catch (e2: Exception) {
+                    Log.e("RutinaViewModel", "❌ POST /completar también falló: ${e2.message}", e2)
+                    _mensajeError.value = "Error de conexión. Verifica tu internet e intenta de nuevo."
+                }
+            } catch (e: Exception) {
+                Log.e("RutinaViewModel", "❌ Excepción general al terminar día: ${e.message}", e)
+                _mensajeError.value = "Error al terminar el día. Por favor, intenta de nuevo."
+            } finally {
+                _terminandoDia.value = false
+            }
+        }
+    }
+    
+    /**
+     * Obtiene el estado del día para verificar si puede completarse.
+     */
+    fun verificarEstadoDia() {
+        val diaId = currentDiaId ?: return
+        
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.diaApi.obtenerEstadoDia(diaId)
+                if (response.isSuccessful && response.body() != null) {
+                    val estado = response.body()!!
+                    Log.d("RutinaViewModel", "Estado del día: ${estado.mensaje}")
+                    // Puedes usar este estado para mostrar información al usuario
+                }
+            } catch (e: Exception) {
+                Log.e("RutinaViewModel", "Error verificando estado: ${e.message}")
+            }
+        }
     }
 }

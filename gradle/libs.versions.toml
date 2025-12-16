@@ -22,6 +22,7 @@ foundation = "1.9.5"
 supabase = "3.0.2"
 ktor = "3.0.1"
 serialization = "1.7.3"
+foundationVersion = "1.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -64,6 +65,7 @@ supabase-gotrue = { group = "io.github.jan-tennert.supabase", name = "gotrue-kt"
 supabase-serializer = { group = "io.github.jan-tennert.supabase", name = "serializer-kotlinx-json" }
 ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

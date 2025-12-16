@@ -5,7 +5,6 @@ import com.example.forcetrack.database.AppDatabase
 import com.example.forcetrack.database.repository.ForceTrackRepository
 import com.example.forcetrack.database.entity.EjercicioDisponibleEntity
 import com.example.forcetrack.repository.MockRepository
-import com.example.forcetrack.network.repository.RemoteRepository
 import com.example.forcetrack.network.sync.SyncService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,10 +34,7 @@ class ForceTrackApplication : Application() {
         )
     }
 
-    // Repositorio remoto para comunicación con Xano
-    val remoteRepository by lazy { RemoteRepository() }
-
-    // Servicio de sincronización con Xano
+    // Servicio de sincronización real disponible para la app
     val syncService by lazy { SyncService() }
 
     // Exponer SessionManager para persistir la sesión del usuario en el dispositivo

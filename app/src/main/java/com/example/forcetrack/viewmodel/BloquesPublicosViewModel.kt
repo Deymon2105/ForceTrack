@@ -3,11 +3,13 @@ package com.example.forcetrack.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.forcetrack.network.RetrofitClient
-import com.example.forcetrack.network.api.BloquePublicoDto
+import com.example.forcetrack.network.dto.BloquePublicoDto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * ViewModel para gestionar bloques públicos (comunidad)
@@ -40,10 +42,21 @@ class BloquesPublicosViewModel : ViewModel() {
             _categoriaSeleccionada.value = categoria
 
             try {
-                val response = RetrofitClient.bloqueApi.getBloquesPublicos(categoria)
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.bloqueApi.getBloquesPublicos(categoria)
+                }
 
                 if (response.isSuccessful) {
-                    _bloquesPublicos.value = response.body() ?: emptyList()
+                    val bloques = response.body() ?: emptyList()
+                    
+                    // Filtrar bloques con datos válidos para evitar crashes
+                    val bloquesValidos = bloques.filter { bloque ->
+                        bloque.nombre.isNotBlank() && 
+                        bloque.nombreUsuario.isNotBlank() &&
+                        bloque.categoria.isNotBlank()
+                    }
+                    
+                    _bloquesPublicos.value = bloquesValidos
                 } else {
                     _error.value = "Error al cargar bloques públicos: ${response.code()}"
                 }

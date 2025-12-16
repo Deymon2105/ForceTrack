@@ -1,7 +1,7 @@
 package com.example.forcetrack.network
 
 import com.example.forcetrack.config.ApiConfig
-import com.example.forcetrack.network.api.XanoApi
+import com.example.forcetrack.network.api.ApiService
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -9,9 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * Cliente de Retrofit para comunicación con la API de Xano
- * Cada grupo de endpoints tiene su propia instancia
- * ✨ ACTUALIZADO: Ahora usa ApiConfig para mayor seguridad
+ * Cliente de Retrofit para comunicación con la API REST del backend Spring Boot
  */
 object RetrofitClient {
 
@@ -39,56 +37,56 @@ object RetrofitClient {
     /**
      * API de Autenticación (Login/Signup)
      */
-    val authApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getAuthUrl()).create(XanoApi::class.java)
+    val authApi: ApiService by lazy {
+        createRetrofit(ApiConfig.getAuthUrl()).create(ApiService::class.java)
     }
 
     /**
      * API de Usuarios
      */
-    val usuarioApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getUsuarioUrl()).create(XanoApi::class.java)
+    val usuarioApi: ApiService by lazy {
+        createRetrofit(ApiConfig.getUsuarioUrl()).create(ApiService::class.java)
     }
 
     /**
      * API de Bloques
      */
-    val bloqueApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getBloqueUrl()).create(XanoApi::class.java)
+    val bloqueApi: ApiService by lazy {
+        createRetrofit(ApiConfig.getBloqueUrl()).create(ApiService::class.java)
     }
 
     /**
      * API de Días
      */
-    val diaApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getDiaUrl()).create(XanoApi::class.java)
+    val diaApi: ApiService by lazy {
+        createRetrofit(ApiConfig.getDiaUrl()).create(ApiService::class.java)
     }
 
     /**
      * API de Ejercicios
      */
-    val ejercicioApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getEjercicioUrl()).create(XanoApi::class.java)
+    val ejercicioApi: ApiService by lazy {
+        createRetrofit(ApiConfig.getEjercicioUrl()).create(ApiService::class.java)
     }
 
     /**
      * API de Series
      */
-    val serieApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getSerieUrl()).create(XanoApi::class.java)
+    val serieApi: ApiService by lazy {
+        createRetrofit(ApiConfig.getSerieUrl()).create(ApiService::class.java)
     }
 
     /**
      * API de Ejercicios Disponibles
      */
-    val ejercicioDisponibleApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getEjercicioDisponibleUrl()).create(XanoApi::class.java)
+    val ejercicioDisponibleApi: ApiService by lazy {
+        createRetrofit(ApiConfig.getEjercicioDisponibleUrl()).create(ApiService::class.java)
     }
 
     /**
      * API de Training Logs
      */
-    val trainingLogApi: XanoApi by lazy {
-        createRetrofit(ApiConfig.getTrainingLogUrl()).create(XanoApi::class.java)
+    val trainingLogApi: ApiService by lazy {
+        createRetrofit(ApiConfig.getTrainingLogUrl()).create(ApiService::class.java)
     }
 }

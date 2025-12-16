@@ -1,5 +1,6 @@
 package com.example.forcetrack.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.forcetrack.database.repository.ForceTrackRepository
@@ -7,6 +8,8 @@ import com.example.forcetrack.model.BloqueEntrenamiento
 import com.example.forcetrack.model.DiaRutina
 import com.example.forcetrack.model.EjercicioRutina
 import com.example.forcetrack.model.Serie
+import com.example.forcetrack.network.RetrofitClient
+import com.example.forcetrack.network.dto.CreateDiaRequest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,12 +125,64 @@ class SplitViewModel(private val repository: ForceTrackRepository) : ViewModel()
     fun crearDia(bloqueId: Int, nombre: String) {
         viewModelScope.launch {
             try {
-                repository.crearDia(bloqueId, nombre)
-                // Reload block details to update the list
+                Log.d("SplitViewModel", "Creando día '$nombre' localmente...")
+                
+                // 1. CREAR EN BD LOCAL PRIMERO (instantáneo)
+                val diaIdLong = repository.crearDia(bloqueId, nombre)
+                val diaId = diaIdLong.toInt()
+                Log.d("SplitViewModel", "Día creado localmente con ID: $diaId")
+                
+                // 2. Actualizar UI inmediatamente
                 loadBlockDetails(bloqueId)
+                
+                // 3. Verificar si el bloque es público y sincronizar
+                val bloque = repository.obtenerBloquePorId(bloqueId)
+                if (bloque?.esPublico == true) {
+                    Log.d("SplitViewModel", "Bloque es público, sincronizando día al backend...")
+                    subirDiaAlBackend(diaId, bloqueId, nombre)
+                }
+                
             } catch (e: Exception) {
+                Log.e("SplitViewModel", "Error al crear día: ${e.message}")
                 _uiState.value = _uiState.value.copy(errorMessage = "Error al crear día: ${e.message}")
             }
+        }
+    }
+
+    private suspend fun subirDiaAlBackend(diaIdLocal: Int, bloqueIdLocal: Int, nombre: String) {
+        try {
+            // Buscar el bloque en el backend para obtener su ID
+            val bloqueLocal = repository.obtenerBloquePorId(bloqueIdLocal) ?: return
+            val bloquesBackendResponse = RetrofitClient.bloqueApi.getAllBloques(bloqueLocal.usuarioId)
+            
+            if (bloquesBackendResponse.isSuccessful) {
+                val bloquesBackend = bloquesBackendResponse.body() ?: return
+                val bloqueBackend = bloquesBackend.find { 
+                    it.nombre == bloqueLocal.nombre && it.usuarioId == bloqueLocal.usuarioId 
+                }
+                
+                if (bloqueBackend != null) {
+                    Log.d("SplitViewModel", "Subiendo día '$nombre' al backend...")
+                    
+                    val request = CreateDiaRequest(
+                        bloqueId = bloqueBackend.id,
+                        nombre = nombre,
+                        notas = null
+                    )
+                    
+                    val response = RetrofitClient.diaApi.createDia(request)
+                    
+                    if (response.isSuccessful) {
+                        Log.d("SplitViewModel", "✅ Día sincronizado correctamente")
+                    } else {
+                        Log.e("SplitViewModel", "❌ Error al sincronizar día: ${response.code()}")
+                    }
+                } else {
+                    Log.w("SplitViewModel", "Bloque no encontrado en backend")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SplitViewModel", "❌ Error sincronizando día: ${e.message}")
         }
     }
 

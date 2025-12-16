@@ -60,6 +60,10 @@ class ForceTrackRepository(
     suspend fun eliminarBloque(bloqueId: Int) {
         bloqueDao.eliminarBloque(bloqueId)
     }
+    
+    suspend fun actualizarVisibilidadBloque(bloqueId: Int, esPublico: Boolean) {
+        bloqueDao.actualizarVisibilidad(bloqueId, esPublico)
+    }
 
     // --- Operaciones con Días ---
     fun obtenerDias(bloqueId: Int): Flow<List<DiaEntity>> {

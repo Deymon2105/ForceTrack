@@ -20,5 +20,7 @@ data class DiaRutina(
     val ejercicios: MutableList<EjercicioRutina> = mutableListOf(),
     var notas: String = "",
     val fecha: Long = System.currentTimeMillis(),
-    val numeroSemana: Int = 1
+    val numeroSemana: Int = 1,
+    val completado: Boolean = false,
+    val fechaCompletado: String? = null
 )

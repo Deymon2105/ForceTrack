@@ -21,4 +21,8 @@ interface BloqueDao {
 
     @Query("DELETE FROM bloques WHERE id = :bloqueId")
     suspend fun eliminarBloque(bloqueId: Int)
+    
+    @Query("UPDATE bloques SET esPublico = :esPublico WHERE id = :bloqueId")
+    suspend fun actualizarVisibilidad(bloqueId: Int, esPublico: Boolean)
 }
+
